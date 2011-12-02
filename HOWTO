@@ -1,0 +1,218 @@
+
+Copyright (c) 2011  Axel Neumann
+This program is free software; you can redistribute it and/or
+modify it under the terms of version 2 of the GNU General Public
+License as published by the Free Software Foundation.
+
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+02110-1301, USA
+
+
+WARNING: 
+This package requires root priveleges and may have bugs that format your hard disk!!!!
+Use on your own risk! It is highly recommended to use provided scripts 
+ONLY in a completely isolated environment like qmp or virtual box
+
+
+
+
+
+##########################################################
+some links and reading (maybe outdated):
+http://www.nsnam.org/wiki/index.php/HOWTO_Use_Linux_Containers_to_set_up_virtual_networks
+http://blog.foaa.de/2010/05/lxc-on-debian-squeeze/
+http://lxc.teegra.net/
+http://manpages.ubuntu.com/manpages/lucid/man5/lxc.conf.5.html
+https://wiki.archlinux.org/index.php/Linux_Containers#Bridge_device_setup
+
+
+advanced notes/hints/bugs:
+http://www.mail-archive.com/lxc-users@lists.sourceforge.net/msg01506.html
+http://www.mail-archive.com/lxc-users@lists.sourceforge.net/msg01523.html
+http://www.royong.com/showthread.php?t=5134
+http://realtechtalk.com/connect_No_buffer_space_available_Oct_18_122103_vps_kernel_printk_177_messages_suppressed_Oct_18_122103_vps_kernel_Neighbour_table_overflow-1055-articles
+http://www.olsr.org/?q=node/26
+http://linux-tips.org/article/92/disabling-reverse-dns-lookups-in-ssh
+http://comments.gmane.org/gmane.linux.kernel.containers.lxc.general/1644
+http://lxc.sourceforge.net/patches/linux/2.6.38/2.6.38.2-lxc1/
+
+
+
+##########################################################
+Installing basics:
+
+Kernel:
+I am using 2.6.39-2-amd64 (3.0.0 had bridge bug, 3.1.0 untested)
+use lxc-checkconfig for missing features
+
+
+UserSpace:
+required debian packages:
+git-core debootstrap  libcap-dev bridge-utils rsync iptables uml-utilities
+wireshark tshark iptraf tcpdump netdiag net-tools iputils-ping mtr traceroute iptraf netcat iperf lsof atop htop
+ipcalc ipv6calc 
+
+maybe add to the kernel boot option:
+
+     rhash_entries=2097152
+
+
+
+##########################################################
+Installing lxc:
+
+  mkdir lxc
+  cd lxc
+  ls -la
+  wget -c http://sourceforge.net/projects/lxc/files/lxc/lxc-0.7.4.1/lxc-0.7.4.1.tar.gz
+  tar xzvf lxc-0.7.4.1.tar.gz 
+  cd lxc-0.7.4.1
+  ./configure
+
+Advice:
+If you wish to have a non root user to use the lxc tools,
+you can add the needed capabilities to the tools by invoking
+the 'lxc-setcap' script. To remove the capabilities, use
+'lxc-setcap -d'.
+
+make
+make check
+sudo make install
+
+
+# fix missing files (http://www.mail-archive.com/lxc-devel@lists.sourceforge.net/msg00548.html):
+
+for i in $(cd doc; ls *.[0-9])
+do
+  NUMBER=$(echo "$i" | sed 's/.*\(.\)$/\1/')
+  sudo cp doc/$i /usr/local/man/man$NUMBER/$i
+done
+
+sudo mkdir -p /usr/share/doc/lxc/
+sudo cp -r doc/examples /usr/share/doc/lxc/
+
+
+###############################################################################
+installing mlc:
+
+git clone git://qmp.cat/mlc.git mlc.git
+cd mlc.git
+
+
+########################
+# this is just a note:
+# mlc-debian.sh has been created from templates/lxc-debian and adding the following patch:
+
+neumann@SED:~/mlc/mlc.git$ diff -u /usr/local/bin/lxc-debian  mlc-debian.sh
+--- /usr/local/bin/lxc-debian   2011-04-10 16:08:49.316105115 +0200
++++ mlc-debian.sh       2011-04-11 09:59:59.515845259 +0200
+@@ -159,6 +159,7 @@
+        fi
+ 
+        arch=$(arch)
++       arch=${ARCH:-$(arch)}
+        if [ "$arch" == "x86_64" ]; then
+            arch=amd64
+        fi
+
+
+###############################################################################
+# continue and check mlc-init-host.sh for further configuration...
+
+# as root do (READ ABOVE WARNING):
+
+cd mlc.git
+check and edit mlc-vars.sh mlc-create-mother.sh mlc-init-host.sh according to your needs!
+
+. ./mlc-vars.sh
+
+mkdir -p $mlc_conf_dir
+ln -s $mlc_conf_dir rootfs
+
+./mlc-create-mother.sh -n mlc0002 --id 2
+
+./mlc-init-host.sh
+
+man lxc #or: man doc/lxc.7; man doc/...
+
+mlc_help
+
+
+###############################################################################
+###############################################################################
+###############################################################################
+###############################################################################
+# installing source-projects into mother (template for all other containers)
+
+ssh root@10.0.0.2
+
+cd /usr/src/; wget m4 bison flex olsrd babeld batmand ...
+
+cd /usr/src
+
+####################
+# uci:
+
+tar xzvf uci-*.tgz
+cd uci-..
+make
+make install
+
+# if it fails fix this:
+
+--- cli.c.orig  2011-04-30 13:23:44.363608957 +0000
++++ cli.c       2011-04-30 13:24:03.953608963 +0000
+@@ -462,7 +462,7 @@
+ 
+ static int uci_batch_cmd(void)
+ {
+-       char *argv[MAX_ARGS];
++       char *argv[MAX_ARGS+2];
+        char *str = NULL;
+        int ret = 0;
+        int i, j;
+
+####################
+# bmx6:
+
+cd /usr/src/
+git clone git://git.bmx6.net/bmx6.git
+cd bmx6
+make clean_all
+make build_all
+make install_all
+
+####################
+# olsrd:
+cd /usr/src
+wget http://www.olsr.org/releases/0.6/olsrd-0.6.2.tar.gz
+tar xzvf olsrd-*.tar.gz
+cd olsrd...
+make clean clean_all clean_libs
+make all libs
+make install install_libs
+
+####################
+# babeld:
+cd /usr/src
+wget http://www.pps.jussieu.fr/~jch/software/files/babeld-1.2.1.tar.gz
+tar xzvf babeld-*.tar.gz
+cd babeld...
+make ...
+
+
+
+
+###############################################################################
+# there are preconfigured ipv4 and ipv6 host entries in  /etc/hosts
+# if you want to add more use something like:
+#
+# U=fd01; D=1; P=olsr6; echo >> files/etc/hosts; for N in $(seq 00 49); do echo "${U}::a0cd:ef10:${N}0${D}:0:1   ${D}.mlc$(( 1000 + $N )).${P}" >> files/etc/hosts; done
+

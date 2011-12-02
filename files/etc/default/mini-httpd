@@ -1,0 +1,10 @@
+# Defaults for mini_httpd initscript
+# Author: Marvin Stark <marv@der-marv.de>
+
+# Start daemon?
+# 0 = no
+# 1 = yes
+START=1
+
+# Additional options that are passed to the Daemon.
+DAEMON_OPTS="-C /etc/mini-httpd.conf"
