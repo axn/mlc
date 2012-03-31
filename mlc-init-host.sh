@@ -40,7 +40,7 @@ if [ "$(id -u)" != "0" ]; then
 fi 
 
 modprobe ip6_tunnel
-modprobe niit
+#modprobe niit
 
 MLC_setup_bridge $mlc_net0_link $mlc_ip4_admin_gateway $mlc_net0_ip4_mask $mlc_net0_ip4_brc
 MLC_setup_bridge $mlc_net1_link 
@@ -65,12 +65,8 @@ sysctl -w net.ipv6.neigh.default.gc_thresh3=16384 # orig 512 # 16384
 
 iptables_mask=$(ipcalc -b $mlc_ip4_admin_gateway/mlc_ip4_admin_netmask | grep Network: | awk '{print $2}')
 
-#if ! iptables -t nat -L -nv | grep MASQUERADE | grep eth0 | grep $iptables_mask ; then
-#    iptables -t nat -I POSTROUTING -s $iptables_mask -o eth0 -j MASQUERADE
-#fi
 
-
-for dev in eth0 bat0 wlan0; do
+for dev in eth0 wlan0; do
 	if ! iptables -t nat -L -nv | grep MASQUERADE | grep $dev | grep $iptables_mask ; then
 	    iptables -t nat -I POSTROUTING -s $iptables_mask -o $dev -j MASQUERADE
 	fi
