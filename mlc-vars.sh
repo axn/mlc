@@ -37,6 +37,9 @@ mlc_ssh="ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=$mlc_known_hosts_
 mkdir -p $mlc_tmp_dir
 
 mlc_conf_dir="/usr/local/var/lib/lxc"
+#mlc_conf_dir="/var/lib/lxc"
+
+mlc_owrt_fs_tgz="/usr/src/openwrt/13f/qmpfw-gsoc.git/build/alix/bin/x86/openwrt-x86-generic-rootfs.tar.gz"
 
 mlc_arch="i386" # i386 (for i686)  or  amd64 (for x86_64), or nothing for autodetection
 mlc_debian_suite="squeeze" # squeeze, lenny, wheezy, sid.  Or check whats available on: http://cdn.debian.net/debian/
@@ -380,15 +383,19 @@ aptitude \
 build-essential gdb file subversion git-core \
 libjson0 libjson0-dbg libjson0-dev \
 lynx \
+telnet \
 tcpdump \
 mtr traceroute \
 psmisc lsof \
 iptraf  netcat iperf  \
-bison flex m4 \
-quagga quagga-doc \
+bison flex m4 autoconf autoconf-archive cmake autogen dh-autoreconf gawk texinfo \
 mini-httpd \
 nmap \
 
+"
+
+mlc_deb_packages_disabled="\
+quagga quagga-doc \
 "
 
 mlc_sources="\
@@ -581,7 +588,8 @@ mlc_cpu_sleep_until_idle() {
   local idle="0"
 
   while [ "$idle" -lt "$min" ]; do 
-     idle="$(top -d1  -n2 | grep -e "^Cpu(s):" | sed -e '2p' -n |  awk -F'%' '{print $4}' |  awk '{print $2}' |  awk -F'.' '{print $1}')" 
+     idle="$(top -d1  -n2 | grep -e  "Cpu(s):" | sed -e '2p' -n |  awk -F',' '{print $4}' |  awk '{print $2}' |  awk -F'.' '{print $1}')"
+#    idle="$(top -d1  -n2 | grep -e "^Cpu(s):" | sed -e '2p' -n |  awk -F'%' '{print $4}' |  awk '{print $2}' |  awk -F'.' '{print $1}')"
      echo "cpu $idle idle"
   done
 
@@ -1026,21 +1034,33 @@ MLC_qdisc_set_rules() {
 
   MLC_qdisc_set_rule $dev 5  0.2ms  0%   2%  0% #BroadCast
   MLC_qdisc_set_rule $dev 6  0.4ms  0%   0%  0% # 0.2% #UniCast
+#  MLC_qdisc_set_rule $dev 5  0.2ms  0%   0%  0% #BroadCast
+#  MLC_qdisc_set_rule $dev 6  0.4ms  0%   2%  0% # 0.2% #UniCast
 
   MLC_qdisc_set_rule $dev 7  0.3ms  0%   5%  0% #BroadCast
   MLC_qdisc_set_rule $dev 8  1.6ms  0%   0%  0% #0.5% #UniCast
+#  MLC_qdisc_set_rule $dev 7  0.3ms  0%   0%  0% #BroadCast
+#  MLC_qdisc_set_rule $dev 8  1.6ms  0%   5%  0% #0.5% #UniCast
 
   MLC_qdisc_set_rule $dev 9  0.4ms  0%   10% 0% #BroadCast
   MLC_qdisc_set_rule $dev 10 6.4ms  0%   0%  0% #1% #UniCast
+#  MLC_qdisc_set_rule $dev 9  0.4ms  0%   0% 0% #BroadCast
+#  MLC_qdisc_set_rule $dev 10 6.4ms  0%   10%  0% #1% #UniCast
 
   MLC_qdisc_set_rule $dev 11 0.5ms  0%   20% 0% #BroadCast
   MLC_qdisc_set_rule $dev 12 25ms   0%   0%  0% #2% #UniCast
+#  MLC_qdisc_set_rule $dev 11 0.5ms  0%   0% 0% #BroadCast
+#  MLC_qdisc_set_rule $dev 12 25ms   0%   20%  0% #2% #UniCast
 
   MLC_qdisc_set_rule $dev 13 0.6ms  0%   40% 0% #0.8ms 25% BroadCast
   MLC_qdisc_set_rule $dev 14 100ms  0%   0%  0% #5% #UniCast
+#  MLC_qdisc_set_rule $dev 13 0.6ms  0%   0% 0% #0.8ms 25% BroadCast
+#  MLC_qdisc_set_rule $dev 14 100ms  0%   40%  0% #5% #UniCast
 
   MLC_qdisc_set_rule $dev 15 0.7ms  0%   80% 0% #1ms 40% BroadCast
   MLC_qdisc_set_rule $dev 16 400ms  0%   0%  0% #10% #UniCast
+#  MLC_qdisc_set_rule $dev 15 0.7ms  0%   0% 0% #1ms 40% BroadCast
+#  MLC_qdisc_set_rule $dev 16 400ms  0%   80%  0% #10% #UniCast
 
 }
 
@@ -1171,7 +1191,10 @@ mlc_link_set() {
 
 mlc_mac_set() {
 
-  [ -z $1 ] && echo example: mlc_mac_set 1 101 ${mlc_dev_prefix}0 00:00:00:00:00:AA 3 && return 1
+  [ -z $1 ] && \
+echo "example: mlc_mac_set <dev_idx> <nodeA>  <phyDev> <macOfPeerDev>   <lq>" && \
+echo "example: mlc_mac_set    1       1001     ${mlc_dev_prefix}0   p00:00:00:00:00:AA  3 "  && \
+return 1
 
   local ifn=$1
   local a=$2
@@ -1932,37 +1955,80 @@ EOF
 # configure bmx6
 cat <<EOF > $vm_rootfs/etc/config/bmx6
 
-config bmx6 general
-	option globalPrefix "$mlc_ip6_ula2_prefix::/48"
 
-config plugin
-        option plugin bmx6_config.so
+config 'bmx6' 'general'
+#	option globalPrefix "$mlc_ip6_ula2_prefix::/48"
+#       option autoconfPrefix fd66:66:66::/48
+        option tun6Address $mlc_ip6_ripe2_prefix:$vm_id::1/64
+        option tun4Address 10.254.$(( $vm_id / 100 )).$(( $vm_id % 100 ))/32
 
-config plugin
-        option plugin bmx6_json.so
+config 'plugin'
+        option 'plugin' 'bmx6_config.so'
 
-config plugin
-	option plugin bmx6_sms.so
+config 'plugin'
+        option 'plugin' 'bmx6_json.so'
 
+config 'plugin'
+        option 'plugin' 'bmx6_sms.so'
 
-config ipVersion
-        option ipVersion 6
-	option throwRules 0
+config 'plugin'
+        option 'plugin' 'bmx6_quagga.so'
 
-config hna
-        option hna $mlc_ip6_ripe2_prefix:$vm_id::/64
+#config 'ipVersion'
+#       option 'ipVersion' '6'
+#       option 'throwRules' '0'
+#	option tableTuns 61
+#	option tablePrefTuns 6001
 
-		
 config dev
 	option dev $mlc_net12_name
+#	option dev $mlc_net1_name
+
+config 'tunOut' ip6
+        option 'tunOut' 'ip6'
+        option 'network' '2012::/16'
+        option 'exportDistance' '0'
+#        option 'ipMetric' '2000'
+
+config 'tunOut' ip4
+        option 'tunOut' 'ip4'
+        option 'network' '10.254.0.0/16'
+#        option 'ipMetric' '2000'
+
+EOF
+
+cat <<EOF > /dev/null
+
 
 config dev
-	option dev $mlc_net22_name
+#	option dev $mlc_net22_name
+	option dev $mlc_net2_name
 #	option announce 1
+
+#config unicastHna
+#        option unicastHna $mlc_ip6_ripe2_prefix:$vm_id::/64
+
+config 'redistribute' 'guifi'
+        option 'redistribute' 'guifi'
+        option 'connect' '1'
+        option 'network' '10.0.0.0/8'
+        option 'bandwidth' '10000'
+
+config 'tunOut' ip6default
+        option 'tunOut' 'ip6default'
+        option 'network' '::/0'
+        option 'ipMetric' '3000'
+        option 'maxPrefixLen' '0'
+
+
+config 'syncSms'
+        option 'syncSms' 'test'
 
 
 EOF
   
+
+
 # configure olsrd
 cat <<EOF > $vm_rootfs/etc/olsrd.conf
 
@@ -2122,7 +2188,8 @@ EOF
 	return 1
     fi
 
-    if ! [ "$child_rootfs" == "$mother_rootfs" ] ; then
+#    if ! [ "$child_rootfs" == "$mother_rootfs" ] ; then
+    if [ "$mother_rootfs" ] && [ "$child_rootfs" != "$mother_rootfs" ] ; then
 	for dir in $mlc_mount_dirs; do
 	    cat <<EOF >> $child_config/config
 lxc.mount.entry=$mother_rootfs/$dir $child_rootfs/$dir none ro,bind 0 0

@@ -63,7 +63,7 @@ sysctl -w net.ipv6.neigh.default.gc_thresh1=4096  # orig 128 # 4096
 sysctl -w net.ipv6.neigh.default.gc_thresh2=8192  # orig 256 # 8192
 sysctl -w net.ipv6.neigh.default.gc_thresh3=16384 # orig 512 # 16384
 
-iptables_mask=$(ipcalc -b $mlc_ip4_admin_gateway/mlc_ip4_admin_netmask | grep Network: | awk '{print $2}')
+iptables_mask=$(ipcalc -b $mlc_ip4_admin_gateway/$mlc_ip4_admin_netmask | grep Network: | awk '{print $2}')
 
 
 for dev in eth0 wlan0; do
