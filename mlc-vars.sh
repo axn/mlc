@@ -721,6 +721,8 @@ MLC_setup_bridge() {
       brctl setfd $link 0
       ifconfig $link up
       ifconfig $link promisc
+
+ echo 1 > /sys/devices/virtual/net/$link/bridge/multicast_snooping
 }
 
 
@@ -1720,64 +1722,64 @@ auto  $mlc_net1_name
 iface $mlc_net1_name inet static
   mtu $mlc_net_mtu
 
-auto  $mlc_net11_name
-iface $mlc_net11_name inet static
-  address $mlc_net11_ip4_addr
-  netmask $mlc_net11_ip4_mask
-  broadcast $mlc_net11_ip4_brc
-  vlan_raw_device $mlc_net1_name
-  up /sbin/ip -6 addr add $mlc_net11_ula_addr/$mlc_net11_ula_mask dev $mlc_net11_name
-#  up /sbin/ip -6 addr add $mlc_net11_rip_addr/$mlc_net11_rip_mask dev $mlc_net11_name
-
-auto  $mlc_net12_name
-iface $mlc_net12_name inet static
-  address $mlc_net12_ip4_addr
-  netmask $mlc_net12_ip4_mask
-  broadcast $mlc_net12_ip4_brc
-  vlan_raw_device $mlc_net1_name
-  up /sbin/ip -6 addr add $mlc_net12_ula_addr/$mlc_net12_ula_mask dev $mlc_net12_name
-#  up /sbin/ip -6 addr add $mlc_net12_rip_addr/$mlc_net12_rip_mask dev $mlc_net12_name
-
-auto  $mlc_net13_name
-iface $mlc_net13_name inet static
-  address $mlc_net13_ip4_addr
-  netmask $mlc_net13_ip4_mask
-  broadcast $mlc_net13_ip4_brc
-  vlan_raw_device $mlc_net1_name
-  up /sbin/ip -6 addr add $mlc_net13_ula_addr/$mlc_net13_ula_mask dev $mlc_net13_name
-#  up /sbin/ip -6 addr add $mlc_net13_rip_addr/$mlc_net13_rip_mask dev $mlc_net13_name
+#auto  $mlc_net11_name
+#iface $mlc_net11_name inet static
+#  address $mlc_net11_ip4_addr
+#  netmask $mlc_net11_ip4_mask
+#  broadcast $mlc_net11_ip4_brc
+#  vlan_raw_device $mlc_net1_name
+#  up /sbin/ip -6 addr add $mlc_net11_ula_addr/$mlc_net11_ula_mask dev $mlc_net11_name
+##  up /sbin/ip -6 addr add $mlc_net11_rip_addr/$mlc_net11_rip_mask dev $mlc_net11_name
+#
+#auto  $mlc_net12_name
+#iface $mlc_net12_name inet static
+#  address $mlc_net12_ip4_addr
+#  netmask $mlc_net12_ip4_mask
+#  broadcast $mlc_net12_ip4_brc
+#  vlan_raw_device $mlc_net1_name
+#  up /sbin/ip -6 addr add $mlc_net12_ula_addr/$mlc_net12_ula_mask dev $mlc_net12_name
+##  up /sbin/ip -6 addr add $mlc_net12_rip_addr/$mlc_net12_rip_mask dev $mlc_net12_name
+#
+#auto  $mlc_net13_name
+#iface $mlc_net13_name inet static
+#  address $mlc_net13_ip4_addr
+#  netmask $mlc_net13_ip4_mask
+#  broadcast $mlc_net13_ip4_brc
+#  vlan_raw_device $mlc_net1_name
+#  up /sbin/ip -6 addr add $mlc_net13_ula_addr/$mlc_net13_ula_mask dev $mlc_net13_name
+##  up /sbin/ip -6 addr add $mlc_net13_rip_addr/$mlc_net13_rip_mask dev $mlc_net13_name
 
 
 auto  $mlc_net2_name
 iface $mlc_net2_name inet static
   mtu $mlc_net_mtu
 
-auto  $mlc_net21_name
-iface $mlc_net21_name inet static
-  address $mlc_net21_ip4_addr
-  netmask $mlc_net21_ip4_mask
-  broadcast $mlc_net21_ip4_brc
-  vlan_raw_device $mlc_net2_name
-  up /sbin/ip -6 addr add $mlc_net21_ula_addr/$mlc_net21_ula_mask dev $mlc_net21_name
-#  up /sbin/ip -6 addr add $mlc_net21_rip_addr/$mlc_net21_rip_mask dev $mlc_net21_name
-
-auto  $mlc_net22_name
-iface $mlc_net22_name inet static
-  address $mlc_net22_ip4_addr
-  netmask $mlc_net22_ip4_mask
-  broadcast $mlc_net22_ip4_brc
-  vlan_raw_device $mlc_net2_name
-  up /sbin/ip -6 addr add $mlc_net22_ula_addr/$mlc_net22_ula_mask dev $mlc_net22_name
-#  up /sbin/ip -6 addr add $mlc_net22_rip_addr/$mlc_net22_rip_mask dev $mlc_net22_name
-
-auto  $mlc_net23_name
-iface $mlc_net23_name inet static
-  address $mlc_net23_ip4_addr
-  netmask $mlc_net23_ip4_mask
-  broadcast $mlc_net23_ip4_brc
-  vlan_raw_device $mlc_net2_name
-  up /sbin/ip -6 addr add $mlc_net23_ula_addr/$mlc_net23_ula_mask dev $mlc_net23_name
-#  up /sbin/ip -6 addr add $mlc_net23_rip_addr/$mlc_net23_rip_mask dev $mlc_net23_name
+#auto  $mlc_net21_name
+#iface $mlc_net21_name inet static
+#  address $mlc_net21_ip4_addr
+#  netmask $mlc_net21_ip4_mask
+#  broadcast $mlc_net21_ip4_brc
+#  vlan_raw_device $mlc_net2_name
+#  up /sbin/ip -6 addr add $mlc_net21_ula_addr/$mlc_net21_ula_mask dev $mlc_net21_name
+##  up /sbin/ip -6 addr add $mlc_net21_rip_addr/$mlc_net21_rip_mask dev $mlc_net21_name
+#
+#auto  $mlc_net22_name
+#iface $mlc_net22_name inet static
+#  address $mlc_net22_ip4_addr
+#  netmask $mlc_net22_ip4_mask
+#  broadcast $mlc_net22_ip4_brc
+#  vlan_raw_device $mlc_net2_name
+#  up /sbin/ip -6 addr add $mlc_net22_ula_addr/$mlc_net22_ula_mask dev $mlc_net22_name
+##  up /sbin/ip -6 addr add $mlc_net22_rip_addr/$mlc_net22_rip_mask dev $mlc_net22_name
+#
+#auto  $mlc_net23_name
+#iface $mlc_net23_name inet static
+#  address $mlc_net23_ip4_addr
+#  netmask $mlc_net23_ip4_mask
+#  broadcast $mlc_net23_ip4_brc
+#  vlan_raw_device $mlc_net2_name
+#  up /sbin/ip -6 addr add $mlc_net23_ula_addr/$mlc_net23_ula_mask dev $mlc_net23_name
+##  up /sbin/ip -6 addr add $mlc_net23_rip_addr/$mlc_net23_rip_mask dev $mlc_net23_name
 
 
 
@@ -1960,7 +1962,7 @@ config 'bmx6' 'general'
 #	option globalPrefix "$mlc_ip6_ula2_prefix::/48"
 #       option autoconfPrefix fd66:66:66::/48
         option tun6Address $mlc_ip6_ripe2_prefix:$vm_id::1/64
-        option tun4Address 10.254.$(( $vm_id / 100 )).$(( $vm_id % 100 ))/32
+        option tun4Address $mlc_net11_ip4_addr/32 #10.254.$(( $vm_id / 100 )).$(( $vm_id % 100 ))/32
 
 config 'plugin'
         option 'plugin' 'bmx6_config.so'
@@ -1971,8 +1973,8 @@ config 'plugin'
 config 'plugin'
         option 'plugin' 'bmx6_sms.so'
 
-config 'plugin'
-        option 'plugin' 'bmx6_quagga.so'
+#config 'plugin'
+#        option 'plugin' 'bmx6_quagga.so'
 
 #config 'ipVersion'
 #       option 'ipVersion' '6'
@@ -1981,18 +1983,18 @@ config 'plugin'
 #	option tablePrefTuns 6001
 
 config dev
-	option dev $mlc_net12_name
-#	option dev $mlc_net1_name
+#	option dev $mlc_net12_name
+	option dev $mlc_net1_name
 
 config 'tunOut' ip6
         option 'tunOut' 'ip6'
         option 'network' '2012::/16'
-        option 'exportDistance' '0'
+#        option 'exportDistance' '0'
 #        option 'ipMetric' '2000'
 
 config 'tunOut' ip4
         option 'tunOut' 'ip4'
-        option 'network' '10.254.0.0/16'
+        option 'network' '10.0.0.0/8'
 #        option 'ipMetric' '2000'
 
 EOF
@@ -2179,7 +2181,7 @@ lxc.cgroup.devices.allow = c 5:2 rwm
 # rtc
 lxc.cgroup.devices.allow = c 254:0 rwm
 # /dev/net/tun  # stops every related process for ever (maybe only with 64-bit kernel and 32bit bins)
-# lxc.cgroup.devices.allow = c 10:200 rwm
+lxc.cgroup.devices.allow = c 10:200 rwm
 
 EOF
 
