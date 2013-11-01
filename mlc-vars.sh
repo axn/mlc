@@ -1961,8 +1961,6 @@ cat <<EOF > $vm_rootfs/etc/config/bmx6
 config 'bmx6' 'general'
 #	option globalPrefix "$mlc_ip6_ula2_prefix::/48"
 #       option autoconfPrefix fd66:66:66::/48
-        option tun6Address $mlc_ip6_ripe2_prefix:$vm_id::1/64
-        option tun4Address $mlc_net11_ip4_addr/32 #10.254.$(( $vm_id / 100 )).$(( $vm_id % 100 ))/32
 
 config 'plugin'
         option 'plugin' 'bmx6_config.so'
@@ -1976,6 +1974,9 @@ config 'plugin'
 #config 'plugin'
 #        option 'plugin' 'bmx6_quagga.so'
 
+config 'plugin'
+        option 'plugin' 'bmx6_table.so'
+
 #config 'ipVersion'
 #       option 'ipVersion' '6'
 #       option 'throwRules' '0'
@@ -1985,6 +1986,11 @@ config 'plugin'
 config dev
 #	option dev $mlc_net12_name
 	option dev $mlc_net1_name
+
+config 'tunDev' default
+        option 'tunDev' 'default'
+        option tun6Address $mlc_ip6_ripe2_prefix:$vm_id::1/64
+        option tun4Address 10.$(( ( $vm_id / 100 ) )).$(( $vm_id % 100 )).1/24
 
 config 'tunOut' ip6
         option 'tunOut' 'ip6'
