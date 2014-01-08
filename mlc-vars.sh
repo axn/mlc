@@ -416,89 +416,9 @@ bmx6.git::git://git.bmx6.net/bmx6.git \
 
 mlc_help() {
 
-local mother_name="${mlc_name_prefix}${mlc_mother_id}"
+    local mother_name="${mlc_name_prefix}${mlc_mother_id}"
 
-    less <<EOF
-THIS file contains some configuration examples for copy and paster.
-Only use them if you know what they are doing.
-
-read HOWTO first !
-
-. ./mlc-vars.sh
-
-./mlc-init-host.sh
-    
-
-mlc_loop -i 1000 -a 1009 -cb
-mlc_qdisc_prepare
-
-
-
-for node in \$( seq 1000 109 ) ; do mlc_link_set 1 1000 1 \$node 13 ; done
-
-mlc_net_flush
-mlc_configure_line 1 3
-mlc_configure_grid 1 3 3
-
-. ./mlc-vars.sh ; mlc_loop -a 1009  -u
-
-mlc_loop -a 1009 -e "olsrd -d 0; ip rule del pref 9000 lookup 90; ip rule add pref 9000 lookup 90"
-mlc_loop -a 1009 -e "babeld -w -t 111 -D eth2; ip rule del pref 10000 lookup 111; ip rule add pref 10000 lookup 111"
-mlc_loop -a 1009 -e "batmand eth1"
-mlc_loop -a 1009 -e "uci revert bmx6; rm /root/core*; ulimit -c 20000;  bmx6 -d0 >> /root/bmx6.log & "
-
-grep "ERR" rootfs/mlc1000/rootfs/bmx6.log
-find rootfs/mlc1*/rootfs/root/core*
-
-killall --wait bmx6; echo bmx6 killed; killall --wait olsrd; echo olsrd killed
-mlc_loop -a 1009 -e "ip -6 rule del pref 9000 lookup 90; ip -6 rule add pref 9000 lookup 90; olsrd -d 0; rm /root/core*; ulimit -c 20000;  bmx6 -d0 > /root/bmx6.log &" 
-
-debugging olsrd:
-echo "all" | nc localhost 8080
-watch -d -n1 "echo '/all' | nc localhost 8080"
-
-debugging bmx6
-bmx6 -lcd8
-bmx6 -lc traffic=summary status interfaces links locals originators descriptions=255
-
-sudo tcpdump -i mbr1 -n -s0 -w 20110501-01-olsrd-0.6.1-ipv4-grid_1_1_0_0_199.rawdump
-
-sudo tcpdump -nve -s 200 -i ${mlc_bridge_prefix}1 icmp[icmptype] == icmp-timxceed or 'ip[8] < ( 64 - 29 )'
-
-sudo trafshow -n -i ${mlc_bridge_prefix}1 (takes a very long time to start off)
-sudo bwm-ng -I ${mlc_bridge_prefix}1
-
-
-#### auf server:# sudo nc -p 12345 -l ##### auf mlc1000...:# bmx6 -cd0 | nc mlc001 12345
-tail -s 0.1 -f rootfs/mlc1*/root/bmx6.log | tee bmx6.log
-
-
-mlc_loop -i 1000 -a 1010 -s
-mlc_loop -i 1000 -a 1010 -d
-
-# iperf -t 2 -c 172.20.1.103 #-u # iperf -t 2 -V -c 1::1:102  #-u ## tends to hang in loop, causing 100% cpuload
-
-netperf             -l 1 -H 172.20.1.105
-netperf -6 -p 12866 -l 1 -H 1::1:100
-
-#########################
-bridging the digital divide (virtualization into physical network):
-
-mlc_mac_set 3 100 eth0 00:18:84:1a:07:74 3
-
-ssh root@mlc1000
-  tcpdump -i eth3 -n
-  bmx6 dev=eth3:5 d=3
-
-ssh root@103.130.30.200
-  ifconfig eth0:bmx6 10.10.5.200 netmask 255.255.255.0
-  ifconfig ath0:bmx6 10.10.7.200 netmask 255.255.255.0
-  bmx6 dev=eth0:bmx6 dev=ath0:bmx6 -d3
-
-#########################
-
-EOF
-
+    less mlc-help.txt
 }
 
 
@@ -2399,3 +2319,50 @@ mlc_destroy() {
 	    rm -r --preserve-root $vm_config
 	fi
 }
+
+
+
+mlc_perf() {
+#    set -x
+        local child_id="$1"
+        local process_name="$2"
+        local perf_time="$3"
+        local repeat="$4"
+        local selections=${5:-u}
+
+        local child_name="${mlc_name_prefix}${child_id}"
+        local process_pid=$(lxc-ps -n $child_name -- aux | grep "$process_name" | awk '{print $3}')
+        local perf_log_dir="/tmp/mlc_perfs"
+        local perf_log_name="$child_name.$process_pid.log"
+        local perf_log_path="$perf_log_dir/$perf_log_name"
+        
+        local i=0
+
+        if [ "$process_pid" ]; then
+            mkdir -p $perf_log_dir
+
+            while ! [ "$repeat" ] || [ "$repeat" == "0" ] || [ $i -lt $repeat ]; do
+
+                local pstart=$(ps aux | grep -v "grep" | grep "$process_name" | wc -l)
+            
+#               timeout -s INT $perf_time perf stat -a -e task-clock,cycles,instructions --pid $process_pid 2>$perf_log_path
+#               perf stat -a -e instructions:$selections --pid $process_pid sleep $perf_time 2>$perf_log_path
+                timeout -s INT $perf_time perf stat -a -e instructions:$selections --pid $process_pid 2>$perf_log_path
+
+                # cat $perf_log_path
+
+                local pend=$(ps aux | grep -v "grep" | grep "$process_name" | wc -l)
+                local ips=$((( $(cat $perf_log_path| grep instructions | awk '{print $1}' | sed s/,//g ) / $perf_time )))
+
+                printf "%10s  %3s %3s\n" $ips $pstart $pend
+
+                i=$((( $i + 1 )))
+
+                if ! [ "$repeat" ]; then
+                    break
+                fi
+            done
+        fi
+        
+}
+
