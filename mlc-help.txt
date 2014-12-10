@@ -29,6 +29,9 @@ mlc_loop -a 1009 -e "uci revert bmx6; rm /root/core*; ulimit -c 20000;  bmx6 -d0
 
 SIZE=1024; mlc_loop -a 1000 -e "openssl genrsa -out /etc/bmx6/rsa$SIZE.pem $SIZE; openssl rsa -in /etc/bmx6/rsa$SIZE.pem -inform PEM -out /etc/bmx6/rsa$SIZE.der -outform DER"
 
+
+
+
 grep "ERR" rootfs/mlc1000/rootfs/bmx6.log
 find rootfs/mlc1*/rootfs/root/core*
 

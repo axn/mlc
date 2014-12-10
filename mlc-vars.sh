@@ -75,7 +75,7 @@ mlc_mac6_multicast="33:33:0:0:0:0/ff:ff:0:0:0:0"
 mlc_pub_key="ssh-rsa AAAasd..."
 mlc_passwd=""
 
-mlc_cpu_idle_assumption=40
+mlc_cpu_idle_assumption=50
 
 mlc_lang="en_US.UTF-8"
 mlc_language="en_US:en"
@@ -504,13 +504,19 @@ mlc_cpu_min() {
 
 mlc_cpu_sleep_until_idle() {
 
-  local min=$1
-  local idle="0"
+  local min=$mlc_cpu_idle_assumption
+  local cpus=$(cat /proc/cpuinfo | grep processor | wc -l )
+  local probeA=$(grep 'cpu ' /proc/stat | awk '{print $5}')
 
-  while [ "$idle" -lt "$min" ]; do 
-     idle="$(top -d1  -n2 | grep -e  "Cpu(s):" | sed -e '2p' -n |  awk -F',' '{print $4}' |  awk '{print $2}' |  awk -F'.' '{print $1}')"
-#    idle="$(top -d1  -n2 | grep -e "^Cpu(s):" | sed -e '2p' -n |  awk -F'%' '{print $4}' |  awk '{print $2}' |  awk -F'.' '{print $1}')"
-     echo "cpu $idle idle"
+  while true; do
+      local probeB=$(sleep 0.4; grep 'cpu ' /proc/stat | awk '{print $5}')
+      local idle=$((( -100 * ( $probeA - $probeB) / (40 * $cpus) )))
+
+      echo "cpus=$cpus idle=$idle , $( [ "$idle" -lt "$min" ] && echo "WAITING...")"
+
+      [ "$idle" -lt "$min" ] || break
+      
+      probeA=$probeB
   done
 
 }
@@ -521,10 +527,6 @@ MLC_loop_boot() {
   local name="$mlc_name_prefix$1"
   
   lxc-info --name $name | grep -q RUNNING && echo "$name already RUNNING" || lxc-start -n $name -d
-#  echo "bootinit $name started"
-  [ $(( $node % 5 )) == "0" ] || [ "$node" == "$mlc_max" ] &&  mlc_cpu_sleep_until_idle $mlc_cpu_idle_assumption  &&  sync  
-# &&  lxc-wait -n $name -s RUNNING &&   while ! lxc-ps --name $name | grep sshd; do  sleep 0.3; done  &&  echo "$name sshd started"
-#  echo "bootinit $name finished"
 }
 
 
@@ -571,6 +573,7 @@ mlc_loop() {
 		  -u|--update)	 loop_update=1 ; shift 1 ;;
 		  -b|--boot)	 loop_boot=1 ; shift 1 ;;
 		  -s|--stop)	 loop_stop=1 ; shift 1 ;;
+		  -l|--load)	 loop_load=1 ; shift 1 ;;
 		  -d|--desroy)	 loop_destroy=1 ; shift 1 ;;
 		  -p|--pretend)	 loop_pretend="echo"; shift 1;;
 		  -e|--exec)	 loop_exec=$2; shift 2;;
@@ -583,12 +586,14 @@ mlc_loop() {
   for node in $( seq $loop_min $loop_max ) ; do
       local loop_name="$mlc_name_prefix$node"
 
+      [ "$loop_load" == "1" ]    &&  mlc_cpu_sleep_until_idle
       [ "$loop_create" == "1" ]  && echo "creating   $loop_name" && $loop_pretend mlc_create_child $node && sync
       [ "$loop_update" == "1" ]  && echo "updating   $loop_name" && $loop_pretend mlc_update_individual $node $loop_config
-      [ "$loop_boot" == "1" ]    && echo "booting    $loop_name" && $loop_pretend MLC_loop_boot $node
+      [ "$loop_boot" == "1" ]    && echo "booting    $loop_name" && \
+	  mlc_cpu_sleep_until_idle  &&  sync  && $loop_pretend MLC_loop_boot $node
       [ "$loop_stop" == "1" ]    && echo "stopping   $loop_name" && $loop_pretend lxc-stop -n $mlc_name_prefix$node
       [ "$loop_destroy" == "1" ] && echo "destroying $loop_name" && $loop_pretend mlc_destroy $node
-      [ "$loop_exec" != "0" ]    && echo "executing  $loop_name $loop_exec" && \
+      [ "$loop_exec" != "0" ]    && echo "executing  $loop_name $loop_exec"
 	  $loop_pretend $mlc_ssh root@"$(MLC_calc_ip4 $mlc_ip4_admin_prefix1 $node $mlc_admin_idx )" $loop_exec
   done
 
@@ -2245,7 +2250,7 @@ mlc_create_child() {
 	MLC_assign_networks $child_id
 
 
-	if ! lxc-info -n $child_name | grep STOPPED ; then 
+	if lxc-info -n $child_name 2>&1 | grep RUNNING ; then 
 	    echo "specified container '$child_name' must be stopped first"; return 1
 	fi
 
