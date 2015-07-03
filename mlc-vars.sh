@@ -545,6 +545,7 @@ mlc_loop() {
   local loop_help=0
   local loop_create=0
   local loop_boot=0
+  local loop_load=0 
   local loop_stop=0
   local loop_destroy=0
   local loop_pretend=""
@@ -553,8 +554,8 @@ mlc_loop() {
   local loop_exec="0"
   local loop_config=""
 
-  local shortopts="hpcubsdi:a:e:C:"
-  local longopts="help,pretend,create,update;boot,stop,destroy,min:,max:,hosts,exec:,config:"
+  local shortopts="hpcubsdli:a:e:C:"
+  local longopts="help,pretend,create,update;boot,stop,destroy,load,min:,max:,hosts,exec:,config:"
 
 
   local TEMP=$(getopt -o $shortopts --long $longopts -- "$@")
@@ -591,7 +592,7 @@ mlc_loop() {
       [ "$loop_update" == "1" ]  && echo "updating   $loop_name" && $loop_pretend mlc_update_individual $node $loop_config
       [ "$loop_boot" == "1" ]    && echo "booting    $loop_name" && \
 	  mlc_cpu_sleep_until_idle  &&  sync  && $loop_pretend MLC_loop_boot $node
-      [ "$loop_stop" == "1" ]    && echo "stopping   $loop_name" && $loop_pretend lxc-stop -n $mlc_name_prefix$node
+      [ "$loop_stop" == "1" ]    && echo "stopping   $loop_name" && $loop_pretend lxc-stop -t 2 -n $mlc_name_prefix$node
       [ "$loop_destroy" == "1" ] && echo "destroying $loop_name" && $loop_pretend mlc_destroy $node
       [ "$loop_exec" != "0" ]    && echo "executing  $loop_name $loop_exec"
 	  $loop_pretend $mlc_ssh root@"$(MLC_calc_ip4 $mlc_ip4_admin_prefix1 $node $mlc_admin_idx )" $loop_exec
