@@ -36,8 +36,8 @@ mlc_ssh="ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=$mlc_known_hosts_
 
 mkdir -p $mlc_tmp_dir
 
-mlc_conf_dir="/usr/local/var/lib/lxc"
-#mlc_conf_dir="/var/lib/lxc"
+#mlc_conf_dir="/usr/local/var/lib/lxc"
+mlc_conf_dir="/var/lib/lxc"
 
 mlc_owrt_fs_tgz="/usr/src/openwrt/13f/qmpfw-gsoc.git/build/alix/bin/x86/openwrt-x86-generic-rootfs.tar.gz"
 
@@ -512,7 +512,7 @@ mlc_cpu_sleep_until_idle() {
       local probeB=$(sleep 0.4; grep 'cpu ' /proc/stat | awk '{print $5}')
       local idle=$((( -100 * ( $probeA - $probeB) / (40 * $cpus) )))
 
-      echo "cpus=$cpus idle=$idle , $( [ "$idle" -lt "$min" ] && echo "WAITING...")"
+      echo "cpus=$cpus idle=$idle min=$min , $( [ "$idle" -lt "$min" ] && echo "WAITING...")"
 
       [ "$idle" -lt "$min" ] || break
       
@@ -592,7 +592,7 @@ mlc_loop() {
       [ "$loop_update" == "1" ]  && echo "updating   $loop_name" && $loop_pretend mlc_update_individual $node $loop_config
       [ "$loop_boot" == "1" ]    && echo "booting    $loop_name" && \
 	  mlc_cpu_sleep_until_idle  &&  sync  && $loop_pretend MLC_loop_boot $node
-      [ "$loop_stop" == "1" ]    && echo "stopping   $loop_name" && $loop_pretend lxc-stop -t 2 -n $mlc_name_prefix$node
+      [ "$loop_stop" == "1" ]    && echo "stopping   $loop_name" && $loop_pretend lxc-stop -n $mlc_name_prefix$node
       [ "$loop_destroy" == "1" ] && echo "destroying $loop_name" && $loop_pretend mlc_destroy $node
       [ "$loop_exec" != "0" ]    && echo "executing  $loop_name $loop_exec"
 	  $loop_pretend $mlc_ssh root@"$(MLC_calc_ip4 $mlc_ip4_admin_prefix1 $node $mlc_admin_idx )" $loop_exec
@@ -629,7 +629,7 @@ MLC_setup_bridge() {
     return 0
   fi
 
-  if brctl show | grep $link ; then
+  if brctl show | grep "^$link$" ; then
       echo link $link already setup
   else
       echo setup $link
@@ -821,8 +821,8 @@ MLC_veth_obtain() {
   local dev
   local cache_file="$mlc_tmp_dir/MLC_veth_obtain.tmp"
 
-  for name in $(lxc-ls | sort -u); do
-    if lxc-info -n $name | grep -q RUNNING ; then
+  for name in $(lxc-ls  | grep $mlc_name_prefix | sort -u); do
+    if lxc-info -n $name| grep -q RUNNING ; then
       printf "%-10s %-10s " $name "RUNNING"
 
       local node=$( echo $name | awk -F"$mlc_name_prefix" '{print $2}'  )
@@ -1161,7 +1161,8 @@ return 1
 
   local br;  for br in $( brctl show | grep mlc | awk '{print $1}'); do brctl delif $br $dev ; echo "in bridge $br"; done
 
-  brctl addif $mlc_bridge_prefix$ifn $dev
+  brctl show  $mlc_bridge_prefix$ifn | grep "$dev$" || \
+      brctl addif $mlc_bridge_prefix$ifn $dev
 
   MLC_qdisc_set_rules $dev
   MLC_qdisc_set_rules $a_veth
