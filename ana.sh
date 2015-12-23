@@ -24,8 +24,9 @@ ANA_LINKS_MIN=1
 ANA_LINKS_MAX=20
 
 ANA_LINK_KEY_LEN=896
-ANA_NODE_KEY_LEN=3072
+ANA_NODE_KEY_LEN=${1:-3072}
 
+echo "ANA_NODE_KEY_LEN=$ANA_NODE_KEY_LEN"
 
 ANA_MBR=1
 ANA_LQ=3
@@ -54,7 +55,9 @@ ANA_ATTACK_TOPO_COLS=10
 ANA_ATTACK_TOPO_ROLES=1
 ANA_MAIN_OPTS="nodeSignatureLen=$ANA_NODE_KEY_LEN /keyPath=/etc/bmx6/rsa.$ANA_NODE_KEY_LEN linkSignatureLen=$ANA_LINK_KEY_LEN trustedNodesDir=/$ANA_NODE_TRUSTED_DIR"
 ANA_DST_CMD="$ANA_MAIN_CMD $ANA_MAIN_OPTS $ANA_DST_DEVS >/root/bmx6.log&"
-ANA_MLC_CMD="rm -rf /root/bmx6/*; mkdir -p /root/bmx6; cd /root/bmx6; ulimit -c 20000; $ANA_MAIN_CMD $ANA_MAIN_OPTS $ANA_MLC_DEVS > /root/bmx6/bmx6.log 2>&1 &"
+ANA_MLC_CMD="rm -rf /root/bmx6/*; mkdir -p /root/bmx6; cd /root/bmx6; ulimit -c 20000; \
+   $ANA_MAIN_CMD $ANA_MAIN_OPTS nodeVerification=0 linkVerification=0 $ANA_MLC_DEVS /strictSignatures=1 \
+   > /root/bmx6/bmx6.log 2>&1 &"
 ################################
 
 
@@ -66,7 +69,7 @@ ANA_DST2_MAC=14:cf:92:52:13:a6
 ANA_DST2_IP4=192.168.1.102
 ANA_DST_SYS=""
 ANA_DST_PACKAGES="$ANA_OWRT_DIR/bin/ar71xx/packages/routing/bmx7_*.ipk"
-ANA_DST_FILES=""
+ANA_DST_FILES="$ANA_MLC_DIR/ana-owrt-bmx6-upd.sh"
 
 
 ANA_E2E_DST=mlc1003
@@ -74,10 +77,18 @@ ANA_E2E_SRC4=10.0.10.0
 
 ANA_PING_DEADLINE=20
 ANA_STABILIZE_TIME=120
-ANA_MEASURE_TIME=30
+ANA_MEASURE_TIME=25
+ANA_MEASURE_ROUNDS=1
+ANA_MEASURE_PROBES=2
 ANA_MEASURE_GAP=10
 ANA_UPD_PERIOD=0
 ANA_RESULTS_FILE="$ANA_MLC_DIR/ana/results.dat"
+ANA_RT_LOAD=1
+ANA_RT_RAISE_TIME=6
+ANA_PROBE_DELAY_TIME=3
+ANA_PROBE_SAFE_TIME=30
+
+
 
 ANA_NODE_MAX=$((( $mlc_min_node + $ANA_NODES_MAX - 1 )))
 ANA_ATTACK_ROLE_COLORS=(orange rosa cyan)
@@ -199,6 +210,8 @@ ana_create_protos_mlc() {
 	[ $nodes -gt $bmxPs ] && \
 	    mlc_loop -li $(((1000 + $bmxPs ))) -a $((( 1000 + $nodes - 1))) -e "$ANA_MLC_CMD"
 
+	[ $nodes -gt $ANA_LINKS_MAX ] && \
+	    mlc_loop -li $(((1000 + $ANA_LINKS_MAX ))) -a $((( 1000 + $nodes - 1))) -e "bmx6 -c $ANA_MLC_DEVS /strictSignatures=0"
     fi
 }
 
@@ -252,6 +265,7 @@ ana_bench_tp_owrt() {
     local outFile=$1
     local duration=${2:-$ANA_MEASURE_TIME}
 
+    echo "$(ana_time_stamp) tp init"
     local dst6=$( $ANA_SSH root@$ANA_E2E_SRC4 "bmx6 -c list=originators"  | grep "name=$ANA_E2E_DST" | awk -F'primaryIp=' '{print $2}' | cut -d' ' -f1 )
 
 #   $ANA_SSH root@$ANA_E2E_SRC4 "traceroute6 -n $dst6"
@@ -259,7 +273,9 @@ ana_bench_tp_owrt() {
     local ping=$( $ANA_SSH root@$ANA_E2E_SRC4 "ping6 -nc2 $dst6" | head -n3 | tail -n1 )
     local ttl=$( echo $ping | awk -F'ttl=' '{print $2}' | cut -d' ' -f1 )
     local rtt=$( echo $ping | awk -F'time=' '{print $2}' | cut -d' ' -f1 )
+    echo "$(ana_time_stamp) tp started"
     local tp=$( $ANA_SSH root@$ANA_E2E_SRC4 "iperf -V -t $duration -y C -c $dst6 | cut -d',' -f9" 2>/dev/null )
+    echo "$(ana_time_stamp) tp finished"
 
     echo "dst6=$dst6 ttl=$ttl rtt=$rtt tp=$tp" > $outFile
     cat $outFile
@@ -268,38 +284,46 @@ ana_bench_tp_owrt() {
 ana_bench_top_owrt() {
     local outFile=$1
     local duration=${2:-$ANA_MEASURE_TIME}
-    local dst4=${3:-$ANA_DST1_IP4}
+    local delay=${3:-$ANA_PROBE_DELAY_TIME}
+    local dst4=${4:-$ANA_DST1_IP4}
 
-    echo "ana_bench_top_owrt begin"
-    ssh root@$dst4 "top -b -n2 -d $duration" > $outFile.tmp
+    echo "$(ana_time_stamp) ana_bench_top_owrt init"
+    ssh root@$dst4 "sleep $delay; top -b -n2 -d $duration" > $outFile.tmp
     local mem=$(cat $outFile.tmp | grep "$ANA_MAIN_CMD" | grep -v "grep" | tail -n1 | awk '{print $5}')
     local cpu=$(cat $outFile.tmp | grep "$ANA_MAIN_CMD" | grep -v "grep" | tail -n1 | awk '{print $7}'| cut -d'%' -f1)
     local idl=$(cat $outFile.tmp | grep "CPU:" | grep -v "grep" | tail -n1 | awk '{print $8}'| cut -d'%' -f1)
     
     echo "mem=$mem cpu=$cpu idl=$idl" > $outFile
-    echo "ana_bench_top_owrt end:"
+    echo "$(ana_time_stamp) ana_bench_top_owrt end:"
     cat $outFile
 }
 
 ana_bench_top_sys() {
     local outFile=$1
     local duration=${2:-$ANA_MEASURE_TIME}
+    local delay=${3:-$ANA_PROBE_DELAY_TIME}
 
-    echo "ana_bench_top_sys begin"
+
+    echo "$(ana_time_stamp) ana_bench_top_sys init"
+    sleep $delay
+    echo "$(ana_time_stamp) ana_bench_top_sys begin"
     top -b -n2 -d $duration > $outFile.tmp
     local idl=$(cat $outFile.tmp | grep "^%Cpu" | grep -v "grep" | tail -n1 | awk '{print $8}')
     local mem=$(cat $outFile.tmp | grep "^KiB Mem" | grep -v "grep" | tail -n1 | awk '{print $7}')
     
     echo "mem=$mem idl=$idl" > $outFile
-    echo "ana_bench_top_sys end:"
+    echo "$(ana_time_stamp) ana_bench_top_sys end:"
     cat $outFile
 }
 
 ana_bench_tcp_owrt() {
     local outFile=$1
     local duration=${2:-$ANA_MEASURE_TIME}
+    local delay=${3:-$ANA_PROBE_DELAY_TIME}
 
-    echo "ana_bench_tcp_owrt begin"
+    echo "$(ana_time_stamp) ana_bench_tcp_owrt init"
+    sleep $delay
+    echo "$(ana_time_stamp) ana_bench_tcp_owrt begin"
     timeout $duration tcpdump -nve -i $ANA_DST_DEV -s 200 -w $outFile.tmp 2>/dev/null
 
     local rxStats=$(tshark -r $outFile.tmp -qz "io,stat,$duration,eth.src!=$ANA_DST1_MAC&&udp.port==$ANA_UDP_PORT" 2>/dev/null| tail -n2 |head -n1)
@@ -312,107 +336,148 @@ ana_bench_tcp_owrt() {
        " > $outFile
 
      cat $outFile
-    echo "ana_bench_tcp_owrt finished"
+    echo "$(ana_time_stamp) ana_bench_tcp_owrt end"
 }
 
-ana_create_updates() {
-    local updDuration=$1
-    local updPeriod=$2
+ana_bmx_stat_owrt() {
+    local outFile=$1
+    
+    echo "$(ana_time_stamp) ana_bmx_stat_owrt begin"
+    ssh root@$ANA_DST1_IP4 "bmx6 -c list=status" > $outFile
+    echo "$(ana_time_stamp) ana_bmx_stat_owrt end"
+}
 
-    echo "updating descriptions for $updDuration s every $updPeriod s ... ( $(date) )"
+
+ana_create_descUpdates_mlc() {
+    
+    local resultsDir=$1
+    local updDuration=$2
+    local updPeriod=$3
+    local updRounds=(printf "%.0f\n" $( echo "scale=2; $updDuration / $updPeriod" | bc ) )
+
+    echo "$(ana_time_stamp) updating descriptions for $updDuration s rounds=$updRounds  period=$updPeriod s ..."
 
     if [ $(printf "%.0f\n" $(echo "$updPeriod * 100" | bc)) -ge 10 ]; then
-	local updRounds=$( echo "scale=2; $updDuration / $updPeriod" | bc )
 	local r=
+
 	for r in $(seq 0 $updRounds); do
 	    sleep $updPeriod &
 	    local n=$((( $mlc_min_node + 10 + (r % 30) )))
 	    mlc_loop -i $n -e "bmx6 -c descUpdate" 
 	    wait
+	    [ -d $resultsDir ] || break
 	done
+
+    elif [ $(printf "%.0f\n" $(echo "$updPeriod * 100" | bc)) -le -10 ]; then
+	
+	ssh root@$ANA_DST1_IP4 "/tmp/ana-owrt-bmx6-upd.sh $updPeriod"
+	for r in $(seq 0 $(( -1 * $updRounds)) ); do
+	    sleep $(( -1 * $updPeriod))
+	    [ -d $resultsDir ] || break
+	done
+	ssh root@$ANA_DST1_IP4 "/tmp/ana-owrt-bmx6-upd.sh"
     else
+
 	sleep $updDuration
     fi
-    echo "updating descriptions done ( $(date) )"
+    echo "$(ana_time_stamp) updating descriptions done"
 }
 
 
 ana_measure_ovhd_owrt() {
 
-    local duration=${1:-$ANA_MEASURE_TIME}
-    local updPeriod=${2:-$ANA_UPD_PERIOD}
-    local resultsFile=${3:-$ANA_RESULTS_FILE}
-    local header=$4
+    local resultsFile=${1:-$ANA_RESULTS_FILE}
+    local rtLoad=${2:-$ANA_RT_LOAD}
+    local updPeriod=${3:-$ANA_UPD_PERIOD}
+    local duration=${4:-$ANA_MEASURE_TIME}
+    local probes=${5:-$ANA_MEASURE_PROBES}
+    local probe=
 
     local start=$(ana_time_stamp)
     mkdir -p $(dirname $resultsFile)
 
-    local tmpDir=$(mktemp -d)
+    rm -rf /tmp/ana.tmp.*
+    local tmpDir=$(mktemp -d /tmp/ana.tmp.XXXXXXXXXX)
 
-    local bmxStatus="$( ssh root@$ANA_DST1_IP4 "bmx6 -c list=status" )"
-    local links="$( echo "$bmxStatus" | awk -F'nbs=' '{print $2}' | cut -d' ' -f1 )"
-    local nodes="$( echo "$bmxStatus" | awk -F'nodes=' '{print $2}' | cut -d'/' -f1 )"
-    local bmxCpu="$( echo "$bmxStatus" | awk -F'cpu=' '{print $2}' | cut -d' ' -f1 )"
-    local txPps="$( echo "$bmxStatus" | awk -F'txBpP=' '{print $2}' | cut -d' ' -f1 | cut -d '/' -f2)"
-    local txBps="$( echo "$bmxStatus" | awk -F'txBpP=' '{print $2}' | cut -d' ' -f1 | cut -d '/' -f1)"
-    local rxPps="$( echo "$bmxStatus" | awk -F'rxBpP=' '{print $2}' | cut -d' ' -f1 | cut -d '/' -f2)"
-    local rxBps="$( echo "$bmxStatus" | awk -F'rxBpP=' '{print $2}' | cut -d' ' -f1 | cut -d '/' -f1)"
-    local linkRsa="$( echo "$bmxStatus" | awk -F'linkKey=RSA' '{print $2}' | cut -d' ' -f1 )"
-    local nodeRsa="$( echo "$bmxStatus" | awk -F'nodeKey=RSA' '{print $2}' | cut -d' ' -f1 )"
-    local txq="$( echo "scale=2; $(echo "$bmxStatus" | awk -F'txQ=' '{print $2}' | cut -d' ' -f1)" | bc) "
-    local rev="$( echo "$bmxStatus" | awk -F'revision=' '{print $2}' | cut -d' ' -f1 )"
-
-    ana_create_updates $((( (2 * $duration) + (2 * $ANA_MEASURE_GAP) + 25 ))) $updPeriod &
+    local longDuration=$((( (($duration + $ANA_PROBE_SAFE_TIME) * $probes) + $ANA_MEASURE_GAP  )))
+    ana_create_descUpdates_mlc $tmpDir $longDuration $updPeriod <<< /dev/zero &
 
     sleep $ANA_MEASURE_GAP
-    [ $links -ge 3 ] && (
-	echo "tp started ( $(date) )"
-	ana_bench_top_owrt $tmpDir/cpl.out $duration &
-	ana_bench_tp_owrt $tmpDir/tp.out $duration & 
-	wait
-	echo "tp finished ( $(date) )"
-    )
 
-    sleep $ANA_MEASURE_GAP
-    true && (
-	echo "bench started ( $(date) )"
-	ana_bench_top_sys  $tmpDir/ids.out $duration &
-	ana_bench_top_owrt $tmpDir/top.out $duration &
-	ana_bench_tcp_owrt $tmpDir/tcp.out $duration &
-	wait
-	echo "bench finished ( $(date) )"
-    )
+    for probe in $(seq 1 $probes); do
 
-    echo "waiting for finished descUpdates... ( $(date) )"
-    wait
-    echo "summarizing results.. ( $(date) )"
-    local mem=$(cat $tmpDir/top.out | awk -F'mem=' '{print $2}'| cut -d' ' -f1)
-    local cpu=$(cat $tmpDir/top.out | awk -F'cpu=' '{print $2}'| cut -d' ' -f1)
+	true && (
+	    echo "$(ana_time_stamp) bench started"
 
-    local cpl=$(cat $tmpDir/cpl.out | awk -F'cpu=' '{print $2}'| cut -d' ' -f1)
-    local ids=$(cat $tmpDir/ids.out | awk -F'idl=' '{print $2}'| cut -d' ' -f1)
-    local idl=$(cat $tmpDir/cpl.out | awk -F'idl=' '{print $2}'| cut -d' ' -f1)
-    local tp=$(cat $tmpDir/tp.out | awk -F'tp=' '{print $2}'| cut -d' ' -f1)
-    local rtt=$(cat $tmpDir/tp.out | awk -F'rtt=' '{print $2}'| cut -d' ' -f1)
-    local ttl=$(cat $tmpDir/tp.out | awk -F'ttl=' '{print $2}'| cut -d' ' -f1)
+	    ana_bench_top_owrt $tmpDir/topOI.out $duration 0 &
+	    ana_bench_tcp_owrt $tmpDir/tcpOI.out $duration 0 &
+	    ana_bench_top_sys  $tmpDir/topSI.out $duration 0 &
+	    ana_bmx_stat_owrt  $tmpDir/bmxOI.out &
+	    wait
 
-    local outPps=$(cat $tmpDir/tcp.out | awk -F'txP=' '{print $2}'| cut -d' ' -f1)
-    local outBps=$(cat $tmpDir/tcp.out | awk -F'txB=' '{print $2}'| cut -d' ' -f1)
-    local inPps=$(cat  $tmpDir/tcp.out | awk -F'rxP=' '{print $2}'| cut -d' ' -f1)
-    local inBps=$(cat  $tmpDir/tcp.out | awk -F'rxB=' '{print $2}'| cut -d' ' -f1)
+	    local links="$(   cat $tmpDir/bmxOI.out | awk -F'nbs=' '{print $2}' | cut -d' ' -f1 )"
+
+	    [ "$rtLoad" != "0" ] && [ $links -ge 3 ] && (
+		ana_bench_tp_owrt  $tmpDir/tpOL.out  $((($duration + $ANA_RT_RAISE_TIME))) &
+		ana_bench_tcp_owrt $tmpDir/tcpOL.out $duration $ANA_PROBE_DELAY_TIME &
+		ana_bench_top_sys  $tmpDir/topSL.out $duration $ANA_PROBE_DELAY_TIME &
+		wait
+	    )
+	    echo "$(ana_time_stamp) bench finished"
+	)
+
+	echo "$(ana_time_stamp) summarizing probe=$probe results from $tmpDir"
+
+	local links="$(   cat $tmpDir/bmxOI.out | awk -F'nbs=' '{print $2}' | cut -d' ' -f1 )"
+	local nodes="$(   cat $tmpDir/bmxOI.out | awk -F'nodes=' '{print $2}' | cut -d'/' -f1 )"
+	local bmxCpu="$(  cat $tmpDir/bmxOI.out | awk -F'cpu=' '{print $2}' | cut -d' ' -f1 )"
+	local txPps="$(   cat $tmpDir/bmxOI.out | awk -F'txBpP=' '{print $2}' | cut -d' ' -f1 | cut -d '/' -f2)"
+	local txBps="$(   cat $tmpDir/bmxOI.out | awk -F'txBpP=' '{print $2}' | cut -d' ' -f1 | cut -d '/' -f1)"
+	local rxPps="$(   cat $tmpDir/bmxOI.out | awk -F'rxBpP=' '{print $2}' | cut -d' ' -f1 | cut -d '/' -f2)"
+	local rxBps="$(   cat $tmpDir/bmxOI.out | awk -F'rxBpP=' '{print $2}' | cut -d' ' -f1 | cut -d '/' -f1)"
+	local linkRsa="$( cat $tmpDir/bmxOI.out | awk -F'linkKey=RSA' '{print $2}' | cut -d' ' -f1 )"
+	local nodeRsa="$( cat $tmpDir/bmxOI.out | awk -F'nodeKey=RSA' '{print $2}' | cut -d' ' -f1 )"
+	local rev="$(     cat $tmpDir/bmxOI.out | awk -F'revision=' '{print $2}' | cut -d' ' -f1 )"
+	local txq="$( echo "scale=2; $( cat $tmpDir/bmxOI.out | awk -F'txQ=' '{print $2}' | cut -d' ' -f1)" | bc) "
+
+
+	local mmOI=$(cat $tmpDir/topOI.out | awk -F'mem=' '{print $2}'| cut -d' ' -f1)
+	local cpOI=$(cat $tmpDir/topOI.out | awk -F'cpu=' '{print $2}'| cut -d' ' -f1)
+	local idOI=$(cat $tmpDir/topOI.out | awk -F'idl=' '{print $2}'| cut -d' ' -f1)
+	local txPI=$(cat $tmpDir/tcpOI.out | awk -F'txP=' '{print $2}'| cut -d' ' -f1)
+	local txBI=$(cat $tmpDir/tcpOI.out | awk -F'txB=' '{print $2}'| cut -d' ' -f1)
+	local rxPI=$(cat $tmpDir/tcpOI.out | awk -F'rxP=' '{print $2}'| cut -d' ' -f1)
+	local rxBI=$(cat $tmpDir/tcpOI.out | awk -F'rxB=' '{print $2}'| cut -d' ' -f1)
+	local idSI=$(cat $tmpDir/topSI.out | awk -F'idl=' '{print $2}'| cut -d' ' -f1)
+
+	local tpOL=$(cat $tmpDir/tpOL.out  | awk -F'tp='  '{print $2}'| cut -d' ' -f1)
+	local rttL=$(cat $tmpDir/tpOL.out  | awk -F'rtt=' '{print $2}'| cut -d' ' -f1)
+	local ttlL=$(cat $tmpDir/tpOL.out  | awk -F'ttl=' '{print $2}'| cut -d' ' -f1)
+	local txPL=$(cat $tmpDir/tcpOL.out | awk -F'txP=' '{print $2}'| cut -d' ' -f1)
+	local txBL=$(cat $tmpDir/tcpOL.out | awk -F'txB=' '{print $2}'| cut -d' ' -f1)
+	local rxPL=$(cat $tmpDir/tcpOL.out | awk -F'rxP=' '{print $2}'| cut -d' ' -f1)
+	local rxBL=$(cat $tmpDir/tcpOL.out | awk -F'rxB=' '{print $2}'| cut -d' ' -f1)
+	local idSL=$(cat $tmpDir/topSL.out | awk -F'idl=' '{print $2}'| cut -d' ' -f1)
+
+	FORMAT="%16s %16s %8s %5s %9s   %6s %6s %10s %11s %9s   %5s %10s %6s %3s   %4s %4s %6s %4s %4s %4s   %8s %8s %8s %8s  %8s %8s %8s %8s " 
+	FIELDS="start end duration probe revision  Links Nodes linkRsa nodeRsa updPeriod  txq tp rtt ttl  CPU BCPU Memory idOI idSI idSL  outPps txPL outBps txBL inPps rxPL inBps rxBL"
+	printf "$FORMAT \n" $FIELDS
+	[ -f $resultsFile ] || printf "$FORMAT \n" $FIELDS > $resultsFile
+	printf "$FORMAT \n" \
+	    $start $(ana_time_stamp) ${duration:-"NA"} $probe ${rev:-"NA"} \
+	    ${links:-"NA"} ${nodes:-"NA"}  ${linkRsa:-"NA"} ${nodeRsa:-"NA"} ${updPeriod:-"NA"}  \
+	    ${txq:-"NA"} ${tpOL:-"NA"} ${rttL:-"NA"} ${ttlL:-"NA"} \
+	    ${cpOI:-"NA"} ${bmxCpu:-"NA"} ${mmOI:-"NA"} ${idOI:-"NA"} ${idSI:-"NA"} ${idSL:-"NA"} \
+	    ${txPI:-"NA"} ${txPL:-"NA"} ${txBI:-"NA"} ${txBL:-"NA"} ${rxPI:-"NA"} ${rxPL:-"NA"} ${rxBI:-"NA"} ${rxBL:-"NA"} \
+	    | tee -a $resultsFile
+
+    done
 
     rm -r $tmpDir
-    
-    FORMAT="%16s %16s %9s   %6s %6s %4s %4s %4s %4s %4s %6s   %8s %8s %8s %8s   %10s %11s %9s %8s %5s  %10s %6s %3s" 
-    FIELDS="start end revision  Links Nodes CPU BCPU CPL IDS IDL Memory   outPps outBps inPps inBps   linkRsa nodeRsa updPeriod duration txq  tp rtt ttl"
-    printf "$FORMAT \n" $FIELDS
-    [ $header ] && printf "$FORMAT \n" $FIELDS > $resultsFile
-    printf "$FORMAT \n" \
-	$start $(ana_time_stamp) ${rev:-"NA"} \
-	${links:-"NA"} ${nodes:-"NA"} ${cpu:-"NA"} ${bmxCpu:-"NA"} ${cpl:-"NA"} ${ids:-"NA"} ${idl:-"NA"} ${mem:-"NA"} \
-	${outPps:-"NA"} ${outBps:-"NA"} ${inPps:-"NA"} ${inBps:-"NA"} \
-	${linkRsa:-"NA"} ${nodeRsa:-"NA"} ${updPeriod:-"NA"} ${duration:-"NA"} ${txq:-"NA"} \
-	${tp:-"NA"} ${rtt:-"NA"} ${ttl:-"NA"} | tee -a $resultsFile
+    echo "$(ana_time_stamp) waiting for finished descUpdates ... "
+    wait
+    echo "$(ana_time_stamp) done"
+
 }
 
 
@@ -611,67 +676,79 @@ ana_set_protos_owrt() {
 
 ana_run_ovhd_scenarios() {
 
-#   ana_init_ovhd_scenarios
+    ana_init_ovhd_scenarios
 
     local params=
     local p=
     local results=
     local round=
 
-    for round in $(seq 1 10); do
+    for round in $(seq 1 $ANA_MEASURE_ROUNDS); do
 
-	if true; then
+	if false; then
 	    params="10 20 30 40 50 60 70 80 90 100 110 120 130 140 150 160 170 180"
 	    results="$(dirname $ANA_RESULTS_FILE)/$(ana_time_stamp)-ovhdVsNodes"
 	    ana_create_protos 0
 	    ana_create_links_owrt
 	    for p in $params; do
-		echo "MEASURING to $results p=$p of $params"
 		ana_create_protos $p
+		echo "$(ana_time_stamp) MEASURING to $results p=$p of $params"
 		sleep $ANA_STABILIZE_TIME
-		ana_measure_ovhd_owrt $ANA_MEASURE_TIME $ANA_UPD_PERIOD $results "$(echo $params | grep -q "^$p" && echo withHeader)"
+		ana_measure_ovhd_owrt $results $ANA_RT_LOAD
 	    done
 	fi
 
-	if true; then
+	if false; then
 	    params="4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20"
 	    results="$(dirname $ANA_RESULTS_FILE)/$(ana_time_stamp)-ovhdVsLinks"
 	    ana_create_protos 0
 	    ana_create_links_owrt 0
 	    ana_create_protos
 	    for p in $params; do
-		echo "MEASURING to $results p=$p of $params"
 		ana_create_links_owrt $p
+		echo "$(ana_time_stamp) MEASURING to $results p=$p of $params"
 		sleep $ANA_STABILIZE_TIME
-		ana_measure_ovhd_owrt $ANA_MEASURE_TIME $ANA_UPD_PERIOD $results "$(echo $params | grep -q "^$p" && echo withHeader)"
+		ana_measure_ovhd_owrt $results $ANA_RT_LOAD
 	    done
 	fi
 
-	if true; then
-	    params="10 7 5 3 2 1 0.7 0.5 0.4"
-	    params="1 0.7 0.5 0.4"
+	if false; then
+	    params="7 5 3 2 1 0.7 0.5 0.4"
 	    results="$(dirname $ANA_RESULTS_FILE)/$(ana_time_stamp)-ovhdVsUpdates"
 	    ana_create_protos 0
 	    ana_create_links_owrt
 	    ana_create_protos
+	    sleep $ANA_STABILIZE_TIME
 	    for p in $params; do
-		echo "MEASURING to $results p=$p of $params"
-		sleep $ANA_STABILIZE_TIME
-		ana_measure_ovhd_owrt $ANA_MEASURE_TIME $p $results "$(echo $params | grep -q "^$p" && echo withHeader)"
+		echo "$(ana_time_stamp) MEASURING to $results p=$p of $params"
+		ana_measure_ovhd_owrt $results $ANA_RT_LOAD $p
 	    done
 	fi
 
 	if true; then
+	    params="-15 -10 -5 -3 -2"
+	    results="$(dirname $ANA_RESULTS_FILE)/$(ana_time_stamp)-ovhdVsOwnUpdates"
+#	    ana_create_protos 0
+#	    ana_create_links_owrt
+#	    ana_create_protos
+#	    sleep $ANA_STABILIZE_TIME
+	    for p in $params; do
+		echo "$(ana_time_stamp) MEASURING to $results p=$p of $params"
+		ana_measure_ovhd_owrt $results $ANA_RT_LOAD $p
+	    done
+	fi
+
+	if false; then
 	    params="512 768 896 1024 1536"
 	    results="$(dirname $ANA_RESULTS_FILE)/$(ana_time_stamp)-ovhdVsCrypt"
 	    ana_create_protos 0
 	    ana_create_links_owrt
 	    ana_create_protos
 	    for p in $params; do
-		echo "MEASURING to $results p=$p of $params"
 		ana_set_protos_owrt $ANA_LINKS_DEF "bmx6 -c linkSignatureLen=$p"
+		echo "$(ana_time_stamp) MEASURING to $results p=$p of $params"
 		sleep $ANA_STABILIZE_TIME
-		ana_measure_ovhd_owrt $ANA_MEASURE_TIME $ANA_UPD_PERIOD $results "$(echo $params | grep -q "^$p" && echo withHeader)"
+		ana_measure_ovhd_owrt $results $ANA_RT_LOAD
 	    done
 	fi
 
