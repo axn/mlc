@@ -69,7 +69,8 @@ ANA_DST2_MAC=14:cf:92:52:13:a6
 ANA_DST2_IP4=192.168.1.102
 ANA_DST_SYS=""
 ANA_DST_PACKAGES="$ANA_OWRT_DIR/bin/ar71xx/packages/routing/bmx7_*.ipk"
-ANA_DST_FILES="$ANA_MLC_DIR/ana-owrt-bmx6-upd.sh"
+ANA_DST_BMX6_UPD="ana-owrt-bmx6-upd.sh"
+ANA_DST_FILES="$ANA_MLC_DIR/$ANA_DST_BMX6_UPD"
 
 
 ANA_E2E_DST=mlc1003
@@ -79,8 +80,8 @@ ANA_PING_DEADLINE=20
 ANA_STABILIZE_TIME=120
 ANA_MEASURE_TIME=25
 ANA_MEASURE_ROUNDS=1
-ANA_MEASURE_PROBES=2
-ANA_MEASURE_GAP=10
+ANA_MEASURE_PROBES=10
+ANA_MEASURE_GAP=2
 ANA_UPD_PERIOD=0
 ANA_RESULTS_FILE="$ANA_MLC_DIR/ana/results.dat"
 ANA_RT_LOAD=1
@@ -181,7 +182,7 @@ ana_create_protos_dst() {
 
     if [ "$nodes" = "0" ]; then
 
-	$ANA_SSH root@$ANA_DST1_IP4 "while ps |grep -e $ANA_PROTO| grep -v grep; do killall $ANA_PROTO; timeout 0.2 sleep 1d ; done; rm -f $ANA_PROTO_RM"
+	$ANA_SSH root@$ANA_DST1_IP4 "killall $ANA_DST_BMX6_UPD; while killall $ANA_PROTO; do timeout 0.2 sleep 1d; done; rm -f $ANA_PROTO_RM"
 
     else
 	$ANA_SSH root@$ANA_DST1_IP4 "$ANA_DST_CMD"
@@ -264,16 +265,17 @@ ana_create_keys_owrt() {
 ana_bench_tp_owrt() {
     local outFile=$1
     local duration=${2:-$ANA_MEASURE_TIME}
+    local dst=${3:-$ANA_E2E_DST}
 
     echo "$(ana_time_stamp) tp init"
-    local dst6=$( $ANA_SSH root@$ANA_E2E_SRC4 "bmx6 -c list=originators"  | grep "name=$ANA_E2E_DST" | awk -F'primaryIp=' '{print $2}' | cut -d' ' -f1 )
+    local dst6=$( $ANA_SSH root@$ANA_E2E_SRC4 "bmx6 -c list=originators"  | grep "name=$dst" | awk -F'primaryIp=' '{print $2}' | cut -d' ' -f1 )
 
-#   $ANA_SSH root@$ANA_E2E_SRC4 "traceroute6 -n $dst6"
+   $ANA_SSH root@$ANA_E2E_SRC4 "traceroute6 -n $dst6"
 
     local ping=$( $ANA_SSH root@$ANA_E2E_SRC4 "ping6 -nc2 $dst6" | head -n3 | tail -n1 )
     local ttl=$( echo $ping | awk -F'ttl=' '{print $2}' | cut -d' ' -f1 )
     local rtt=$( echo $ping | awk -F'time=' '{print $2}' | cut -d' ' -f1 )
-    echo "$(ana_time_stamp) tp started"
+    echo "$(ana_time_stamp) tp started $ANA_E2E_SRC4 -> $dst $dst6 "
     local tp=$( $ANA_SSH root@$ANA_E2E_SRC4 "iperf -V -t $duration -y C -c $dst6 | cut -d',' -f9" 2>/dev/null )
     echo "$(ana_time_stamp) tp finished"
 
@@ -353,7 +355,7 @@ ana_create_descUpdates_mlc() {
     local resultsDir=$1
     local updDuration=$2
     local updPeriod=$3
-    local updRounds=(printf "%.0f\n" $( echo "scale=2; $updDuration / $updPeriod" | bc ) )
+    local updRounds=$(printf "%.0f\n" $( echo "scale=2; $updDuration / $updPeriod" | bc ) )
 
     echo "$(ana_time_stamp) updating descriptions for $updDuration s rounds=$updRounds  period=$updPeriod s ..."
 
@@ -370,12 +372,12 @@ ana_create_descUpdates_mlc() {
 
     elif [ $(printf "%.0f\n" $(echo "$updPeriod * 100" | bc)) -le -10 ]; then
 	
-	ssh root@$ANA_DST1_IP4 "/tmp/ana-owrt-bmx6-upd.sh $updPeriod"
+	ssh root@$ANA_DST1_IP4 "/tmp/$ANA_DST_BMX6_UPD $updPeriod"
 	for r in $(seq 0 $(( -1 * $updRounds)) ); do
 	    sleep $(( -1 * $updPeriod))
 	    [ -d $resultsDir ] || break
 	done
-	ssh root@$ANA_DST1_IP4 "/tmp/ana-owrt-bmx6-upd.sh"
+	ssh root@$ANA_DST1_IP4 "killall $ANA_DST_BMX6_UPD"
     else
 
 	sleep $updDuration
@@ -399,7 +401,7 @@ ana_measure_ovhd_owrt() {
     rm -rf /tmp/ana.tmp.*
     local tmpDir=$(mktemp -d /tmp/ana.tmp.XXXXXXXXXX)
 
-    local longDuration=$((( (($duration + $ANA_PROBE_SAFE_TIME) * $probes) + $ANA_MEASURE_GAP  )))
+    local longDuration=$((( (($duration + $ANA_PROBE_SAFE_TIME) * 2 * $probes) + $ANA_MEASURE_GAP  )))
     ana_create_descUpdates_mlc $tmpDir $longDuration $updPeriod <<< /dev/zero &
 
     sleep $ANA_MEASURE_GAP
@@ -439,6 +441,8 @@ ana_measure_ovhd_owrt() {
 	local nodeRsa="$( cat $tmpDir/bmxOI.out | awk -F'nodeKey=RSA' '{print $2}' | cut -d' ' -f1 )"
 	local rev="$(     cat $tmpDir/bmxOI.out | awk -F'revision=' '{print $2}' | cut -d' ' -f1 )"
 	local txq="$( echo "scale=2; $( cat $tmpDir/bmxOI.out | awk -F'txQ=' '{print $2}' | cut -d' ' -f1)" | bc) "
+	local lstDsc="$(  cat $tmpDir/bmxOI.out | awk -F'lastDesc=' '{print $2}' | cut -d' ' -f1 )"
+	local uptime="$(  cat $tmpDir/bmxOI.out | awk -F'uptime=' '{print $2}' | cut -d' ' -f1 )"
 
 
 	local mmOI=$(cat $tmpDir/topOI.out | awk -F'mem=' '{print $2}'| cut -d' ' -f1)
@@ -459,8 +463,8 @@ ana_measure_ovhd_owrt() {
 	local rxBL=$(cat $tmpDir/tcpOL.out | awk -F'rxB=' '{print $2}'| cut -d' ' -f1)
 	local idSL=$(cat $tmpDir/topSL.out | awk -F'idl=' '{print $2}'| cut -d' ' -f1)
 
-	FORMAT="%16s %16s %8s %5s %9s   %6s %6s %10s %11s %9s   %5s %10s %6s %3s   %4s %4s %6s %4s %4s %4s   %8s %8s %8s %8s  %8s %8s %8s %8s " 
-	FIELDS="start end duration probe revision  Links Nodes linkRsa nodeRsa updPeriod  txq tp rtt ttl  CPU BCPU Memory idOI idSI idSL  outPps txPL outBps txBL inPps rxPL inBps rxBL"
+	FORMAT="%16s %16s %8s %5s %9s   %6s %6s %10s %11s %9s   %5s %10s %6s %3s   %4s %4s %6s %4s %4s %4s   %8s %8s %8s %8s  %8s %8s %8s %8s   %11s %6s" 
+	FIELDS="start end duration probe revision  Links Nodes linkRsa nodeRsa updPeriod  txq tp rtt ttl  CPU BCPU Memory idOI idSI idSL  outPps txPL outBps txBL inPps rxPL inBps rxBL  uptime lstDsc"
 	printf "$FORMAT \n" $FIELDS
 	[ -f $resultsFile ] || printf "$FORMAT \n" $FIELDS > $resultsFile
 	printf "$FORMAT \n" \
@@ -469,6 +473,7 @@ ana_measure_ovhd_owrt() {
 	    ${txq:-"NA"} ${tpOL:-"NA"} ${rttL:-"NA"} ${ttlL:-"NA"} \
 	    ${cpOI:-"NA"} ${bmxCpu:-"NA"} ${mmOI:-"NA"} ${idOI:-"NA"} ${idSI:-"NA"} ${idSL:-"NA"} \
 	    ${txPI:-"NA"} ${txPL:-"NA"} ${txBI:-"NA"} ${txBL:-"NA"} ${rxPI:-"NA"} ${rxPL:-"NA"} ${rxBI:-"NA"} ${rxBL:-"NA"} \
+	    ${uptime:-"NA"} ${lstDsc:-"NA"} \
 	    | tee -a $resultsFile
 
     done
@@ -676,7 +681,7 @@ ana_set_protos_owrt() {
 
 ana_run_ovhd_scenarios() {
 
-    ana_init_ovhd_scenarios
+#    ana_init_ovhd_scenarios
 
     local params=
     local p=
@@ -712,8 +717,9 @@ ana_run_ovhd_scenarios() {
 	    done
 	fi
 
-	if false; then
+	if true; then
 	    params="7 5 3 2 1 0.7 0.5 0.4"
+#	    params="0.7 0.5"
 	    results="$(dirname $ANA_RESULTS_FILE)/$(ana_time_stamp)-ovhdVsUpdates"
 	    ana_create_protos 0
 	    ana_create_links_owrt
@@ -727,18 +733,19 @@ ana_run_ovhd_scenarios() {
 
 	if true; then
 	    params="-15 -10 -5 -3 -2"
+#	    params="-15 -5 -2"
 	    results="$(dirname $ANA_RESULTS_FILE)/$(ana_time_stamp)-ovhdVsOwnUpdates"
-#	    ana_create_protos 0
-#	    ana_create_links_owrt
-#	    ana_create_protos
-#	    sleep $ANA_STABILIZE_TIME
+	    ana_create_protos 0
+	    ana_create_links_owrt
+	    ana_create_protos
+	    sleep $ANA_STABILIZE_TIME
 	    for p in $params; do
 		echo "$(ana_time_stamp) MEASURING to $results p=$p of $params"
 		ana_measure_ovhd_owrt $results $ANA_RT_LOAD $p
 	    done
 	fi
 
-	if false; then
+	if true; then
 	    params="512 768 896 1024 1536"
 	    results="$(dirname $ANA_RESULTS_FILE)/$(ana_time_stamp)-ovhdVsCrypt"
 	    ana_create_protos 0
@@ -751,8 +758,6 @@ ana_run_ovhd_scenarios() {
 		ana_measure_ovhd_owrt $results $ANA_RT_LOAD
 	    done
 	fi
-
-
     done
 }
 
