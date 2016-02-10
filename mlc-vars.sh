@@ -1883,10 +1883,8 @@ EOF
 # configure bmx6
 cat <<EOF > $vm_rootfs/etc/config/bmx6
 
-
 config 'bmx6' 'general'
-#	option globalPrefix "$mlc_ip6_ula2_prefix::/48"
-#       option autoconfPrefix fd66:66:66::/48
+        option 'tunOutTimeout' '5000'
 
 config 'plugin'
         option 'plugin' 'bmx6_config.so'
@@ -1895,10 +1893,7 @@ config 'plugin'
         option 'plugin' 'bmx6_json.so'
 
 config 'plugin'
-        option 'plugin' 'bmx6_sms.so'
-
-#config 'plugin'
-#        option 'plugin' 'bmx6_quagga.so'
+       option 'plugin' 'bmx6_sms.so'
 
 config 'plugin'
         option 'plugin' 'bmx6_table.so'
@@ -1920,16 +1915,96 @@ config 'tunDev' default
 
 config 'tunOut' ip6
         option 'tunOut' 'ip6'
-        option 'network' '2012::/16'
+        option 'network' '$mlc_ip6_ripe2_prefix::/16'
 #        option 'exportDistance' '0'
 #        option 'ipMetric' '2000'
 
 config 'tunOut' ip4
         option 'tunOut' 'ip4'
-        option 'network' '10.0.0.0/8'
+        option 'network' '10.10.0.0/16'
 #        option 'ipMetric' '2000'
 
+
+config 'redistTable'
+        option 'redistTable' 'bla'
+        option 'table' '100'
+        option 'all' '1'
+        option 'sys' '60'
+
+config 'redistTable'
+        option 'redistTable' 'myBird'
+        option 'table' '100'
+        option 'all' '1'
+        option 'sys' '12'
+
 EOF
+
+
+# configure bmx7
+cat <<EOF > $vm_rootfs/etc/config/bmx7
+
+config 'bmx7' 'general'
+        option 'trustedNodesDir' '/etc/bmx7/trustedNodes'
+        option 'tunOutTimeout' '5000'
+        option 'descCompression' '1'
+
+config 'plugin'
+        option 'plugin' 'bmx7_config.so'
+
+config 'plugin'
+        option 'plugin' 'bmx7_json.so'
+
+config 'plugin'
+       option 'plugin' 'bmx7_sms.so'
+
+config 'plugin'
+        option 'plugin' 'bmx7_tun.so'
+
+config 'plugin'
+        option 'plugin' 'bmx7_table.so'
+
+#config 'ipVersion'
+#       option 'ipVersion' '6'
+#       option 'throwRules' '0'
+#	option tableTuns 61
+#	option tablePrefTuns 6001
+
+config dev
+#	option dev $mlc_net12_name
+	option dev $mlc_net1_name
+
+config 'tunDev' default
+        option 'tunDev' 'default'
+        option tun6Address $mlc_ip6_ripe3_prefix:$vm_id::1/64
+        option tun4Address 10.20.$(( $vm_id % 100 )).1/24
+
+config 'tunOut' ip6
+        option 'tunOut' 'ip6'
+        option 'network' '$mlc_ip6_ripe3_prefix::/16'
+#        option 'exportDistance' '0'
+#        option 'ipMetric' '2000'
+
+config 'tunOut' ip4
+        option 'tunOut' 'ip4'
+        option 'network' '10.20.0.0/16'
+#        option 'ipMetric' '2000'
+
+
+config 'redistTable'
+        option 'redistTable' 'bla'
+        option 'table' '110'
+        option 'all' '1'
+        option 'sys' '60'
+
+config 'redistTable'
+        option 'redistTable' 'myBird'
+        option 'table' '110'
+        option 'all' '1'
+        option 'sys' '12'
+
+EOF
+
+
 
 cat <<EOF > /dev/null
 
