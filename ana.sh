@@ -10,9 +10,9 @@ ANA_MLC_DIR="/home/neumann/mlc-public.git"
 ANA_OWRT_DIR="/home/neumann/openwrt/openwrt-15.05.git"
 ANA_RESULTS_DIR="$ANA_MLC_DIR/ana"
 ANA_RESULTS_FILE_PREFIX="results-01"
-ANA_PROT_DIR="/usr/src/bmx6.git"
-ANA_NODE_TRUSTED_DIR="etc/bmx6/trustedNodes"
-ANA_NODE_ATTACKED_DIR="etc/bmx6/attackedNodes"
+ANA_PROT_DIR="/usr/src/bmx7.git"
+ANA_NODE_TRUSTED_DIR="etc/bmx7/trustedNodes"
+ANA_NODE_ATTACKED_DIR="etc/bmx7/attackedNodes"
 ANA_NODE_KEYS_DIR="usr/src/bmxKeys"
 ANA_MLC_KEYS_DIR=$ANA_MLC_DIR/rootfs/mlc0002/rootfs/$ANA_NODE_KEYS_DIR
 
@@ -30,13 +30,13 @@ echo "ANA_NODE_KEY_LEN=$ANA_NODE_KEY_LEN"
 
 ANA_MBR=1
 ANA_LQ=3
-ANA_PROTO=bmx6
-ANA_PROTO_RM="/usr/lib/bmx6* /etc/config/bmx6"
+ANA_PROTO=bmx7
+ANA_PROTO_RM="/usr/lib/bmx7* /etc/config/bmx7"
 ANA_MLC_DEVS="dev=eth1"
 #ANA_DST_DEVS="dev=br-lan dev=wlan0 /l=1"
 ANA_DST_DEVS="dev=br-lan"
 
-ANA_PROTO_CMD="bmx6 d=0"
+ANA_PROTO_CMD="bmx7 d=0"
 ANA_UDP_PORT="6240"
 
 ################################
@@ -64,8 +64,8 @@ ANA_DST2_MAC=14:cf:92:52:13:a6
 ANA_DST2_IP4=192.168.1.102
 ANA_DST_SYS=""
 ANA_DST_PACKAGES="$ANA_OWRT_DIR/bin/ar71xx/packages/routing/bmx7_*.ipk"
-ANA_DST_BMX6_UPD="ana-owrt-bmx6-upd.sh"
-ANA_DST_FILES="$ANA_MLC_DIR/$ANA_DST_BMX6_UPD"
+ANA_DST_BMX7_UPD="ana-owrt-bmx7-upd.sh"
+ANA_DST_FILES="$ANA_MLC_DIR/$ANA_DST_BMX7_UPD"
 
 
 ANA_E2E_DST=mlc1003
@@ -158,8 +158,8 @@ ana_create_nodes() {
     fi
 
     # ANA_PROTO_RM:
-    rm -f $ANA_MLC_DIR/rootfs/mlc*/rootfs/etc/config/bmx6
-    rm -f $ANA_MLC_DIR/rootfs/mlc*/rootfs/usr/lib/bmx6_*
+    rm -f $ANA_MLC_DIR/rootfs/mlc*/rootfs/etc/config/bmx7
+    rm -f $ANA_MLC_DIR/rootfs/mlc*/rootfs/usr/lib/bmx7_*
 
 
     killall -w iperf
@@ -176,11 +176,11 @@ ana_create_protos_dst() {
     local nodes=${1:-$ANA_NODES_DEF}
     local rsaLen=${2:-"$ANA_NODE_KEY_LEN"}
 
-    local ANA_DST_CMD="$ANA_PROTO_CMD nodeSignatureLen=$rsaLen /keyPath=/etc/bmx6/rsa.$rsaLen $ANA_MAIN_OPTS $ANA_DST_DEVS >/root/bmx6.log&"
+    local ANA_DST_CMD="$ANA_PROTO_CMD nodeSignatureLen=$rsaLen /keyPath=/etc/bmx7/rsa.$rsaLen $ANA_MAIN_OPTS $ANA_DST_DEVS >/root/bmx7.log&"
 
     if [ "$nodes" = "0" ]; then
 
-	$ANA_SSH root@$ANA_DST1_IP4 "killall $ANA_DST_BMX6_UPD; while killall $ANA_PROTO; do timeout 0.2 sleep 1d; done; rm -f $ANA_PROTO_RM"
+	$ANA_SSH root@$ANA_DST1_IP4 "killall $ANA_DST_BMX7_UPD; while killall $ANA_PROTO; do timeout 0.2 sleep 1d; done; rm -f $ANA_PROTO_RM"
 
     else
 	$ANA_SSH root@$ANA_DST1_IP4 "$ANA_DST_CMD"
@@ -193,10 +193,10 @@ ana_create_protos_mlc() {
     local nodes=${1:-$ANA_NODES_DEF}
     local rsaLen=${2:-"$ANA_NODE_KEY_LEN"}
 
-#   local ANA_MLC_CMD="$ANA_PROTO_CMD plugin=bmx6_evil.so nodeSignatureLen=$rsaLen /keyPath=/etc/bmx6/rsa.$rsaLen $ANA_MAIN_OPTS $ANA_MLC_DEVS >/root/bmx6.log& sleep 3"
-    local ANA_MLC_CMD="rm -rf /root/bmx6/*; mkdir -p /root/bmx6; cd /root/bmx6; ulimit -c 20000; \
-   $ANA_PROTO_CMD nodeSignatureLen=$rsaLen /keyPath=/etc/bmx6/rsa.$rsaLen $ANA_MAIN_OPTS nodeVerification=0 linkVerification=0 $ANA_MLC_DEVS /strictSignatures=1 \
-   > /root/bmx6/bmx6.log 2>&1 &"
+#   local ANA_MLC_CMD="$ANA_PROTO_CMD plugin=bmx7_evil.so nodeSignatureLen=$rsaLen /keyPath=/etc/bmx7/rsa.$rsaLen $ANA_MAIN_OPTS $ANA_MLC_DEVS >/root/bmx7.log& sleep 3"
+    local ANA_MLC_CMD="rm -rf /root/bmx7/*; mkdir -p /root/bmx7; cd /root/bmx7; ulimit -c 20000; \
+   $ANA_PROTO_CMD nodeSignatureLen=$rsaLen /keyPath=/etc/bmx7/rsa.$rsaLen $ANA_MAIN_OPTS nodeVerification=0 linkVerification=0 $ANA_MLC_DEVS /strictSignatures=1 \
+   > /root/bmx7/bmx7.log 2>&1 &"
 
 
 
@@ -215,7 +215,7 @@ ana_create_protos_mlc() {
 	    mlc_loop -li $(((1000 + $bmxPs ))) -a $((( 1000 + $nodes - 1))) -e "$ANA_MLC_CMD"
 
 	[ $nodes -gt $ANA_LINKS_MAX ] && \
-	    mlc_loop -li $(((1000 + $ANA_LINKS_MAX ))) -a $((( 1000 + $nodes - 1))) -e "bmx6 -c $ANA_MLC_DEVS /strictSignatures=0"
+	    mlc_loop -li $(((1000 + $ANA_LINKS_MAX ))) -a $((( 1000 + $nodes - 1))) -e "bmx7 -c $ANA_MLC_DEVS /strictSignatures=0"
     fi
 }
 
@@ -256,7 +256,7 @@ ana_create_keys_owrt() {
 
     local rsaLen=${1:-"$ANA_NODE_KEY_LEN"}
 
-    local nodeVersion="$(     ssh root@$ANA_DST1_IP4 "( bmx6 -c version || bmx6 nodeSignatureLen=$rsaLen /keyPath=/etc/bmx6/rsa.$rsaLen version ) | grep version=BMX" )"
+    local nodeVersion="$(     ssh root@$ANA_DST1_IP4 "( bmx7 -c version || bmx7 nodeSignatureLen=$rsaLen /keyPath=/etc/bmx7/rsa.$rsaLen version ) | grep version=BMX" )"
     local nodeId="$( echo "$nodeVersion" | awk -F'id=' '{print $2}' | cut -d' ' -f1 )"; nodeId=${nodeId:-"-"}
     local nodeName="$( echo "$nodeVersion" | awk -F'hostname=' '{print $2}' | cut -d' ' -f1 )"; nodeName=${nodeName:-"-"}
     echo "nodeVersion=$nodeVersion nodId=$nodeId nodeName=$nodeName"
@@ -274,7 +274,7 @@ ana_bench_tp_owrt() {
     local dst=${3:-$ANA_E2E_DST}
 
     echo "$(ana_time_stamp) tp init"
-    local dst6=$( $ANA_SSH root@$ANA_E2E_SRC4 "bmx6 -c list=originators"  | grep "name=$dst" | awk -F'primaryIp=' '{print $2}' | cut -d' ' -f1 )
+    local dst6=$( $ANA_SSH root@$ANA_E2E_SRC4 "bmx7 -c list=originators"  | grep "name=$dst" | awk -F'primaryIp=' '{print $2}' | cut -d' ' -f1 )
 
    $ANA_SSH root@$ANA_E2E_SRC4 "traceroute6 -n $dst6"
 
@@ -351,7 +351,7 @@ ana_bmx_stat_owrt() {
     local outFile=$1
     
     echo "$(ana_time_stamp) ana_bmx_stat_owrt begin"
-    ssh root@$ANA_DST1_IP4 "bmx6 -c list=status" > $outFile
+    ssh root@$ANA_DST1_IP4 "bmx7 -c list=status" > $outFile
     echo "$(ana_time_stamp) ana_bmx_stat_owrt end"
 }
 
@@ -371,19 +371,19 @@ ana_create_descUpdates_mlc() {
 	for r in $(seq 0 $updRounds); do
 	    sleep $updPeriod &
 	    local n=$((( $mlc_min_node + 10 + (r % 20) )))
-	    mlc_loop -i $n -e "bmx6 -c descUpdate" 
+	    mlc_loop -i $n -e "bmx7 -c descUpdate" 
 	    wait
 	    [ -d $resultsDir ] || break
 	done
 
     elif [ $(printf "%.0f\n" $(echo "$updPeriod * 100" | bc)) -le -10 ]; then
 	
-	ssh root@$ANA_DST1_IP4 "/tmp/$ANA_DST_BMX6_UPD $updPeriod"
+	ssh root@$ANA_DST1_IP4 "/tmp/$ANA_DST_BMX7_UPD $updPeriod"
 	for r in $(seq 0 $(( -1 * $updRounds)) ); do
 	    sleep $(( -1 * $updPeriod))
 	    [ -d $resultsDir ] || break
 	done
-	ssh root@$ANA_DST1_IP4 "killall $ANA_DST_BMX6_UPD"
+	ssh root@$ANA_DST1_IP4 "killall $ANA_DST_BMX7_UPD"
     else
 
 	sleep $updDuration
@@ -501,7 +501,7 @@ ana_fetch_node_role() {
 
     local anaIp="$(MLC_calc_ip4 $mlc_ip4_admin_prefix1 $anaId $mlc_admin_idx )"
     local nodeName="${mlc_name_prefix}${anaId}"
-    local nodeVersion="$( $mlc_ssh root@$anaIp "( bmx6 -c version || bmx6 nodeSignatureLen=$rsaLen /keyPath=/etc/bmx6/rsa.$rsaLen version ) | grep version=BMX" )"
+    local nodeVersion="$( $mlc_ssh root@$anaIp "( bmx7 -c version || bmx7 nodeSignatureLen=$rsaLen /keyPath=/etc/bmx7/rsa.$rsaLen version ) | grep version=BMX" )"
     local nodeId="$( echo "$nodeVersion" | awk -F'id=' '{print $2}' | cut -d' ' -f1 )"; nodeId=${nodeId:-"-"}
     local nodeIp="$( echo "$nodeVersion" | awk -F'ip=' '{print $2}' | cut -d' ' -f1 )"; nodeIp=${nodeIp:-"-"}
 
@@ -790,7 +790,7 @@ ana_run_ovhd_scenarios() {
 	    ana_create_links_owrt
 	    ana_create_protos
 	    for p in $params; do
-		ana_set_protos_owrt $ANA_LINKS_DEF "bmx6 -c linkSignatureLen=$p"
+		ana_set_protos_owrt $ANA_LINKS_DEF "bmx7 -c linkSignatureLen=$p"
 		echo "$(ana_time_stamp) MEASURING to $results p=$p of $params"
 		sleep $ANA_STABILIZE_TIME
 		ana_measure_ovhd_owrt $results $ANA_RT_LOAD
@@ -806,7 +806,7 @@ ana_enable_trust() {
    local nodeId=${1:-"$ANA_CPA_TRUST_NODES"}
    local id=
    for id in $nodeId; do
-       mlc_loop -i $id -e "bmx6 -c trustedNodesDir=/etc/bmx6/trustedNodes"
+       mlc_loop -i $id -e "bmx7 -c trustedNodesDir=/etc/bmx7/trustedNodes"
    done
 }
 
@@ -814,18 +814,18 @@ ana_disable_trust() {
    local nodeId=${1:-"$ANA_CPA_TRUST_NODES"}
    local id=
    for id in $nodeId; do
-       mlc_loop -i $id -e "bmx6 -c trustedNodesDir=-"
+       mlc_loop -i $id -e "bmx7 -c trustedNodesDir=-"
    done
 }
 
 ana_enable_cpa_attack() {
    local nodeId=${1:-"$ANA_CPA_ATTACK_NODE"}
-   mlc_loop -i $nodeId -e "bmx6 -c evilOgmSqns=1" 
+   mlc_loop -i $nodeId -e "bmx7 -c evilOgmSqns=1" 
 }
 
 ana_disable_cpa_attack() {
    local nodeId=${1:-"$ANA_CPA_ATTACK_NODE"}
-   mlc_loop -i $nodeId -e "bmx6 -c evilOgmSqns=-" 
+   mlc_loop -i $nodeId -e "bmx7 -c evilOgmSqns=-" 
 }
 
 
