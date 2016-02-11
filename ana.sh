@@ -37,7 +37,7 @@ ANA_MLC_DEVS="dev=eth1"
 ANA_DST_DEVS="dev=br-lan"
 
 ANA_PROTO_CMD="bmx7 d=0"
-ANA_UDP_PORT="6240"
+ANA_UDP_PORT="6270"
 
 ################################
 # for attack scenarios:
@@ -77,7 +77,7 @@ ANA_MEASURE_TIME=25
 ANA_MEASURE_ROUNDS=1
 ANA_MEASURE_PROBES=10
 ANA_MEASURE_GAP=2
-ANA_UPD_PERIOD=10
+ANA_UPD_PERIOD=1
 ANA_RESULTS_FILE="$ANA_MLC_DIR/ana/results.dat"
 ANA_RT_LOAD=1
 ANA_RT_RAISE_TIME=6
@@ -176,7 +176,7 @@ ana_create_protos_dst() {
     local nodes=${1:-$ANA_NODES_DEF}
     local rsaLen=${2:-"$ANA_NODE_KEY_LEN"}
 
-    local ANA_DST_CMD="$ANA_PROTO_CMD nodeSignatureLen=$rsaLen /keyPath=/etc/bmx7/rsa.$rsaLen $ANA_MAIN_OPTS $ANA_DST_DEVS >/root/bmx7.log&"
+    local ANA_DST_CMD="$ANA_PROTO_CMD nodeSignatureLen=$rsaLen /keyPath=/etc/bmx7/rsa.$rsaLen $ANA_MAIN_OPTS $ANA_DST_DEVS >/tmp/bmx7.log&"
 
     if [ "$nodes" = "0" ]; then
 
@@ -688,8 +688,8 @@ ana_init_ovhd_scenarios() {
     ana_create_protos 0
     ana_update_dst
     ana_update_mlc
-#    ana_fetch_roles 0
-#    ana_create_keys_owrt
+    ana_fetch_roles 0
+    ana_create_keys_owrt
 }
 
 ana_set_protos_owrt() {
@@ -724,11 +724,10 @@ ana_run_ovhd_scenarios() {
 		sleep $ANA_STABILIZE_TIME
 		ana_measure_ovhd_owrt $results $ANA_RT_LOAD
 	    done
+	    ana_create_protos 0
+	    ana_fetch_roles 0
+	    ana_create_keys_owrt
 	fi
-
-	ana_create_protos 0
-	ana_fetch_roles 0
-	ana_create_keys_owrt
 
 	if true; then
 	    params="30 40 50 60 70 80 90 100 110 120 130 140 150 160 170 180 190 200"
@@ -758,7 +757,7 @@ ana_run_ovhd_scenarios() {
 	fi
 
 	if true; then
-	    params="15 10 7 5 3 2 1 0.7 0.5 0.4 0.3 0.2"
+	    params="30 20 15 10 7 5 3 2 1 0.7 0.5 0.4 0.3 0.2"
 	    results="$(dirname $ANA_RESULTS_FILE)/$(ana_time_stamp)-ovhdVsUpdates"
 	    ana_create_protos 0
 	    ana_create_links_owrt
@@ -796,6 +795,7 @@ ana_run_ovhd_scenarios() {
 		ana_measure_ovhd_owrt $results $ANA_RT_LOAD
 	    done
 	fi
+
 
     done
 }
