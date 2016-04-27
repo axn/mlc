@@ -61,9 +61,10 @@ ANA_DST_SRC=192.168.1.76/24
 ANA_DST1_MAC=14:cf:92:52:0f:10
 ANA_DST1_IP4=192.168.1.101
 ANA_DST2_MAC=14:cf:92:52:13:a6
-ANA_DST2_IP4=192.168.1.102
+ANA_DSTS_IP4="192.168.1.101 192.168.1.102 192.168.1.103 192.168.1.104"
 ANA_DST_SYS=""
-ANA_DST_PACKAGES="$ANA_OWRT_DIR/bin/ar71xx/packages/routing/bmx7_*.ipk"
+#ANA_DST_PACKAGES="$ANA_OWRT_DIR/bin/ar71xx/packages/routing/bmx7_*.ipk $ANA_OWRT_DIR/bin/ar71xx/packages/routing/bmx7-tun*.ipk"
+ANA_DST_PACKAGES="$ANA_OWRT_DIR/bin/ar71xx/packages/routing/bmx7_*.ipk $ANA_OWRT_DIR/bin/ar71xx/packages/routing/bmx7-metrics_*.ipk"
 ANA_DST_BMX7_UPD="ana-owrt-bmx7-upd.sh"
 ANA_DST_FILES="$ANA_MLC_DIR/$ANA_DST_BMX7_UPD"
 
@@ -77,7 +78,7 @@ ANA_MEASURE_TIME=25
 ANA_MEASURE_ROUNDS=1
 ANA_MEASURE_PROBES=10
 ANA_MEASURE_GAP=2
-ANA_UPD_PERIOD=1
+ANA_UPD_PERIOD=2
 ANA_RESULTS_FILE="$ANA_MLC_DIR/ana/results.dat"
 ANA_RT_LOAD=1
 ANA_RT_RAISE_TIME=6
@@ -124,28 +125,25 @@ ana_time_stamp() {
 
 ana_update_mlc() {
     ssh root@mlc "cd $ANA_PROT_DIR && \
-	make clean_all build_all install EXTRA_CFLAGS='-pg -DPROFILING -DCORE_LIMIT=20000 -DTRAFFIC_DUMP -DCRYPTLIB=POLARSSL_1_3_3'"
+	make clean_all build_all install_all EXTRA_CFLAGS='-pg -DPROFILING -DCORE_LIMIT=20000 -DTRAFFIC_DUMP -DCRYPTLIB=POLARSSL_1_3_3'"
 }
 
 
 ana_update_dst() {
 
-    [ "$ANA_DST_SYS" ] &&  scp $ANA_DST_SYS root@$ANA_DST1_IP4:/tmp/
-    [ "$ANA_DST_FILES" ] && scp $ANA_DST_FILES root@$ANA_DST1_IP4:/tmp/
+    local dst
+    for dst in $ANA_DSTS_IP4; do
+	echo; echo "updating $dst:"
+	[ "$ANA_DST_SYS" ] &&  scp $ANA_DST_SYS root@$dst:/tmp/
+	[ "$ANA_DST_FILES" ] && scp $ANA_DST_FILES root@$dst:/tmp/
 
-#   [ "$ANA_DST_SYS" ] &&  scp $ANA_DST_SYS root@$ANA_DST2_IP4:/tmp/
-#   [ "$ANA_DST_FILES" ] && scp $ANA_DST_FILES root@$ANA_DST2_IP4:/tmp/
-    
-    if [ "$ANA_DST_PACKAGES" ]; then
-	ssh root@$ANA_DST1_IP4 rm /tmp/*.ipk
-echo    scp $ANA_DST_PACKAGES root@$ANA_DST1_IP4:/tmp/
-	scp $ANA_DST_PACKAGES root@$ANA_DST1_IP4:/tmp/
-	ssh root@$ANA_DST1_IP4 opkg install /tmp/*.ipk
-
-#	ssh root@$ANA_DST2_IP4 rm /tmp/*.ipk
-#	scp $ANA_DST_PACKAGES root@$ANA_DST2_IP4:/tmp/
-#	ssh root@$ANA_DST2_IP4 opkg install /tmp/*.ipk
-    fi
+	if [ "$ANA_DST_PACKAGES" ]; then
+	    ssh root@$dst "killall bmx7; rm /tmp/*.ipk; opkg remove bmx7-metrics; opkg remove bmx7"
+	    echo    scp $ANA_DST_PACKAGES root@$dst:/tmp/
+	    scp $ANA_DST_PACKAGES root@$dst:/tmp/
+	    ssh root@$dst opkg install /tmp/*.ipk
+	fi
+    done
 }
 
 ana_create_nodes() {
@@ -156,11 +154,6 @@ ana_create_nodes() {
 	mlc_qdisc_prepare
 	[ "$(mlc_ls | grep RUNNING | wc -l)" = "$((( $ANA_NODES_MAX + 1 )))" ] || echo "MISSING NODES"
     fi
-
-    # ANA_PROTO_RM:
-    rm -f $ANA_MLC_DIR/rootfs/mlc*/rootfs/etc/config/bmx7
-    rm -f $ANA_MLC_DIR/rootfs/mlc*/rootfs/usr/lib/bmx7_*
-
 
     killall -w iperf
     mlc_loop -a 1009 -e "iperf -Vs > /dev/null 2>&1 &"
@@ -176,13 +169,15 @@ ana_create_protos_dst() {
     local nodes=${1:-$ANA_NODES_DEF}
     local rsaLen=${2:-"$ANA_NODE_KEY_LEN"}
 
-    local ANA_DST_CMD="$ANA_PROTO_CMD nodeSignatureLen=$rsaLen /keyPath=/etc/bmx7/rsa.$rsaLen $ANA_MAIN_OPTS $ANA_DST_DEVS >/tmp/bmx7.log&"
+    local ANA_DST_RM="rm -f /etc/config/bmx7; rm -f /usr/lib/bmx7_*;"
+    local ANA_DST_CMD="$ANA_DST_RM $ANA_PROTO_CMD nodeSignatureLen=$rsaLen /keyPath=/etc/bmx7/rsa.$rsaLen $ANA_MAIN_OPTS $ANA_DST_DEVS >/tmp/bmx7.log&"
 
     if [ "$nodes" = "0" ]; then
 
 	$ANA_SSH root@$ANA_DST1_IP4 "killall $ANA_DST_BMX7_UPD; while killall $ANA_PROTO; do timeout 0.2 sleep 1d; done; rm -f $ANA_PROTO_RM"
 
     else
+	echo rpc: $ANA_DST_CMD
 	$ANA_SSH root@$ANA_DST1_IP4 "$ANA_DST_CMD"
 	$ANA_SSH root@$ANA_DST1_IP4 "ip6tables --flush; ip6tables -P FORWARD ACCEPT"
 #	$ANA_SSH root@$ANA_DST1_IP4 "ip6tables -I INPUT -i br-lan -s fe80::16cf:92ff:fe52:13a6 -j DROP"
@@ -199,8 +194,6 @@ ana_create_protos_mlc() {
    > /root/bmx7/bmx7.log 2>&1 &"
 
 
-
-
     if [ "$nodes" = "0" ]; then
 	killall -w $ANA_PROTO
 
@@ -208,6 +201,10 @@ ana_create_protos_mlc() {
 
 #	[ $nodes -lt $ANA_NODES_MAX ] && \
 #	    mlc_loop -i $((( 1000 + $nodes ))) -a $((( 1000 + $ANA_NODES_MAX - 1))) -e "killall -w $ANA_PROTO"
+
+# ANA_PROTO_RM:
+	rm -f $ANA_MLC_DIR/rootfs/mlc*/rootfs/etc/config/bmx7
+	rm -f $ANA_MLC_DIR/rootfs/mlc*/rootfs/usr/lib/bmx7_*
 
 	local bmxPs=$(ps aux | grep "$ANA_PROTO_CMD" | grep -v grep | wc -l)
 
@@ -712,24 +709,6 @@ ana_run_ovhd_scenarios() {
     for round in $(seq 1 $ANA_MEASURE_ROUNDS); do
 
 	if true; then
-	    params="512 768 896 1024 1536 2048 3072 4096"
-	    results="$(dirname $ANA_RESULTS_FILE)/$(ana_time_stamp)-ovhdVsIdCrypt"
-	    ana_create_links_owrt
-	    for p in $params; do
-		ana_create_protos 0
-		ana_fetch_roles 0 $p
-		ana_create_keys_owrt $p
-		ana_create_protos $ANA_NODES_DEF $p 
-		echo "$(ana_time_stamp) MEASURING to $results p=$p of $params"
-		sleep $ANA_STABILIZE_TIME
-		ana_measure_ovhd_owrt $results $ANA_RT_LOAD
-	    done
-	    ana_create_protos 0
-	    ana_fetch_roles 0
-	    ana_create_keys_owrt
-	fi
-
-	if true; then
 	    params="30 40 50 60 70 80 90 100 110 120 130 140 150 160 170 180 190 200"
 	    results="$(dirname $ANA_RESULTS_FILE)/$(ana_time_stamp)-ovhdVsNodes"
 	    ana_create_protos 0
@@ -780,6 +759,24 @@ ana_run_ovhd_scenarios() {
 		echo "$(ana_time_stamp) MEASURING to $results p=$p of $params"
 		ana_measure_ovhd_owrt $results $ANA_RT_LOAD $p
 	    done
+	fi
+
+	if true; then
+	    params="512 768 896 1024 1536 2048 3072 4096"
+	    results="$(dirname $ANA_RESULTS_FILE)/$(ana_time_stamp)-ovhdVsIdCrypt"
+	    ana_create_links_owrt
+	    for p in $params; do
+		ana_create_protos 0
+		ana_fetch_roles 0 $p
+		ana_create_keys_owrt $p
+		ana_create_protos $ANA_NODES_DEF $p 
+		echo "$(ana_time_stamp) MEASURING to $results p=$p of $params"
+		sleep $ANA_STABILIZE_TIME
+		ana_measure_ovhd_owrt $results $ANA_RT_LOAD
+	    done
+	    ana_create_protos 0
+	    ana_fetch_roles 0
+	    ana_create_keys_owrt
 	fi
 
 	if true; then
