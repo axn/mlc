@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 include $(INCLUDE_DIR)/kernel.mk
 
 PKG_NAME:=ana
-PKG_VERSION:=1.0.0
+PKG_VERSION:=1.0.1
 PKG_RELEASE:=1
 PKG_BUILD_DIR := $(BUILD_DIR)/$(PKG_NAME)-$(PKG_VERSION)
 
@@ -17,9 +17,9 @@ define Package/ana
   DEPENDS:=\
 	+coreutils +coreutils-timeout +coreutils-kill +less \
 	+iputils-ping6 +iputils-ping +iputils-tracepath +iputils-tracepath6 +iputils-traceroute6 \
-	+ip-full +ipip \
+	+ip-full +ipip +iperf-mt \
 	+libpolarssl +zlib +kmod-ip6-tunnel +kmod-iptunnel6 +kmod-tun \
-	+iw  +wireless-tools \
+	+iw  +wireless-tools +iwinfo +libiw \
 	+iptables +ip6tables 
 
 
@@ -49,8 +49,10 @@ define Package/ana/install
 	$(INSTALL_DIR) $(1)/etc/
 	$(INSTALL_DIR) $(1)/etc/dropbear/
 	$(INSTALL_DIR) $(1)/etc/config/
+	$(INSTALL_DIR) $(1)/etc/init.d/
 	$(CP) ./files/etc/dropbear/* $(1)/etc/dropbear/
 	$(CP) ./files/etc/config/* $(1)/etc/config/
+	$(CP) ./files/etc/init.d/* $(1)/etc/init.d/
 endef
 
 

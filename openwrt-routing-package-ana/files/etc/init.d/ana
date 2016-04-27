@@ -1,0 +1,42 @@
+#!/bin/sh /etc/rc.common
+
+START=35
+STOP=85
+USE_PROCD=1
+
+start_service() {
+	[ -f /etc/init.d/firewall ] && {
+	     /etc/init.d/firewall stop
+	     rm -f /etc/init.d/firewall
+	}
+
+	local IP4PREFIX="192.168"
+	local IDX=
+	local BMX=
+
+	ip link show dev eth0 | grep "link/ether" | grep "14:cf:92:52:0f:10" && { IDX=101; BMX="bmx7 dev=wlan0.2 dev=br-lan";  }
+	ip link show dev eth0 | grep "link/ether" | grep "14:cf:92:52:13:a6" && { IDX=102; BMX="bmx7 dev=wlan0.2 dev=wlan0.3"; }
+	ip link show dev eth0 | grep "link/ether" | grep "90:f6:52:7f:b9:b3" && { IDX=103; BMX="bmx7 dev=wlan0.3 dev=wlan0.4"; }
+	ip link show dev eth0 | grep "link/ether" | grep "ec:88:8f:dc:c8:d4" && { IDX=104; BMX="bmx7 dev=wlan0.4 dev=br-lan";  }
+	
+	uci set system.@system[0].hostname="o$IDX"
+	uci commit system
+
+	uci set network.lan.ipaddr="$IP4PREFIX.1.$IDX"
+	uci set network.wmesh0_2.ipaddr="$IP4PREFIX.2.$IDX"
+	uci set network.wmesh0_3.ipaddr="$IP4PREFIX.3.$IDX"
+	uci set network.wmesh0_4.ipaddr="$IP4PREFIX.4.$IDX"
+	uci commit network
+
+	# sleep 5
+	# cat /proc/sys/kernel/hostname | grep "o$DIX" || reboot
+	$BMX
+
+
+}
+
+service_triggers()
+{
+	echo        
+}
+

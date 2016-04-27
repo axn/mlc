@@ -13,7 +13,31 @@ config interface 'lan'
 	option force_link '1'
 	option type 'bridge'
 	option proto 'static'
-	option ipaddr '192.168.1.101'
+	option ipaddr '192.168.1.100'
 	option netmask '255.255.255.0'
 	option ip6assign '60'
 
+
+config interface wmesh0
+#        option ifname wlan0
+#        option proto static
+        option proto none
+#        option ip6asign 60
+
+config interface 'wmesh0_2'
+        option ifname @wmesh0.2
+        option proto 'static'
+        option ipaddr '192.168.2.100'
+        option netmask '255.255.255.0'
+
+config interface 'wmesh0_3'
+        option ifname @wmesh0.3
+        option proto 'static'
+        option ipaddr '192.168.3.100'
+        option netmask '255.255.255.0'
+
+config interface 'wmesh0_4'
+        option ifname @wmesh0.4
+        option proto 'static'
+        option ipaddr '192.168.4.100'
+        option netmask '255.255.255.0'
