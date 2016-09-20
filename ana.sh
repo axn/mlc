@@ -21,7 +21,7 @@ ANA_NODES_MIN=10
 
 ANA_LINKS_DEF=4
 ANA_LINKS_MIN=1
-ANA_LINKS_MAX=20
+ANA_LINKS_MAX=40
 
 ANA_LINK_KEY_LEN=896
 ANA_NODE_KEY_LEN=${1:-2048}
@@ -61,10 +61,14 @@ ANA_DST_SRC=192.168.1.76/24
 ANA_DST1_MAC=14:cf:92:52:0f:10
 ANA_DST1_IP4=192.168.1.101
 ANA_DST2_MAC=14:cf:92:52:13:a6
+ANA_DSTS_IP4="192.168.1.101 192.168.1.103 192.168.1.104"
+ANA_DSTS_IP4="192.168.1.102"
 ANA_DSTS_IP4="192.168.1.101 192.168.1.102 192.168.1.103 192.168.1.104"
+ANA_DSTS_IP4="192.168.1.101"
 ANA_DST_SYS=""
 #ANA_DST_PACKAGES="$ANA_OWRT_DIR/bin/ar71xx/packages/routing/bmx7_*.ipk $ANA_OWRT_DIR/bin/ar71xx/packages/routing/bmx7-tun*.ipk"
-ANA_DST_PACKAGES="$ANA_OWRT_DIR/bin/ar71xx/packages/routing/bmx7_*.ipk $ANA_OWRT_DIR/bin/ar71xx/packages/routing/bmx7-metrics_*.ipk"
+ANA_DST_PACKAGES="$ANA_OWRT_DIR/bin/ar71xx/packages/routing/bmx7_*.ipk $ANA_OWRT_DIR/bin/ar71xx/packages/routing/bmx7-iwinfo_*.ipk $ANA_OWRT_DIR/bin/ar71xx/packages/routing/bmx7-topology_*.ipk openwrt-routing-package-ana/files/etc/init.d/ana openwrt-routing-package-ana/files/etc/config/wireless"
+ANA_DST_PACKAGES="$ANA_OWRT_DIR/bin/ar71xx/packages/routing/bmx7_*.ipk $ANA_OWRT_DIR/bin/ar71xx/packages/routing/bmx7-iwinfo_*.ipk $ANA_OWRT_DIR/bin/ar71xx/packages/routing/bmx7-tun_*ipk openwrt-routing-package-ana/files/etc/init.d/ana openwrt-routing-package-ana/files/etc/config/wireless"
 ANA_DST_BMX7_UPD="ana-owrt-bmx7-upd.sh"
 ANA_DST_FILES="$ANA_MLC_DIR/$ANA_DST_BMX7_UPD"
 
@@ -131,17 +135,17 @@ ana_update_mlc() {
 
 ana_update_dst() {
 
-    local dst
+    local dst=
     for dst in $ANA_DSTS_IP4; do
 	echo; echo "updating $dst:"
 	[ "$ANA_DST_SYS" ] &&  scp $ANA_DST_SYS root@$dst:/tmp/
 	[ "$ANA_DST_FILES" ] && scp $ANA_DST_FILES root@$dst:/tmp/
 
 	if [ "$ANA_DST_PACKAGES" ]; then
-	    ssh root@$dst "killall bmx7; rm /tmp/*.ipk; opkg remove bmx7-metrics; opkg remove bmx7"
+	    ssh root@$dst "killall bmx7; rm /tmp/*.ipk; opkg remove bmx7-topology; opkg remove bmx7-tun; opkg remove bmx7-iwinfo; opkg remove bmx7"
 	    echo    scp $ANA_DST_PACKAGES root@$dst:/tmp/
 	    scp $ANA_DST_PACKAGES root@$dst:/tmp/
-	    ssh root@$dst opkg install /tmp/*.ipk
+	    ssh root@$dst "opkg install /tmp/*.ipk; mv /tmp/wireless /etc/config/; mv /tmp/ana /etc/init.d/; /etc/init.d/ana start"
 	fi
     done
 }
@@ -171,17 +175,19 @@ ana_create_protos_dst() {
 
     local ANA_DST_RM="rm -f /etc/config/bmx7; rm -f /usr/lib/bmx7_*;"
     local ANA_DST_CMD="$ANA_DST_RM $ANA_PROTO_CMD nodeSignatureLen=$rsaLen /keyPath=/etc/bmx7/rsa.$rsaLen $ANA_MAIN_OPTS $ANA_DST_DEVS >/tmp/bmx7.log&"
+    local dst=
+    for dst in $ANA_DSTS_IP4; do
+	if [ "$nodes" = "0" ]; then
 
-    if [ "$nodes" = "0" ]; then
+	    $ANA_SSH root@$dst "killall $ANA_DST_BMX7_UPD; while killall $ANA_PROTO; do timeout 0.2 sleep 1d; done; rm -f $ANA_PROTO_RM"
 
-	$ANA_SSH root@$ANA_DST1_IP4 "killall $ANA_DST_BMX7_UPD; while killall $ANA_PROTO; do timeout 0.2 sleep 1d; done; rm -f $ANA_PROTO_RM"
-
-    else
-	echo rpc: $ANA_DST_CMD
-	$ANA_SSH root@$ANA_DST1_IP4 "$ANA_DST_CMD"
-	$ANA_SSH root@$ANA_DST1_IP4 "ip6tables --flush; ip6tables -P FORWARD ACCEPT"
+	else
+	    echo rpc: $ANA_DST_CMD
+	    $ANA_SSH root@$dst "$ANA_DST_CMD"
+	    $ANA_SSH root@$dst "ip6tables --flush; ip6tables -P FORWARD ACCEPT"
 #	$ANA_SSH root@$ANA_DST1_IP4 "ip6tables -I INPUT -i br-lan -s fe80::16cf:92ff:fe52:13a6 -j DROP"
-    fi
+	fi
+    done
 }
 
 ana_create_protos_mlc() {
@@ -253,16 +259,20 @@ ana_create_keys_owrt() {
 
     local rsaLen=${1:-"$ANA_NODE_KEY_LEN"}
 
-    local nodeVersion="$(     ssh root@$ANA_DST1_IP4 "( bmx7 -c version || bmx7 nodeSignatureLen=$rsaLen /keyPath=/etc/bmx7/rsa.$rsaLen version ) | grep version=BMX" )"
-    local nodeId="$( echo "$nodeVersion" | awk -F'id=' '{print $2}' | cut -d' ' -f1 )"; nodeId=${nodeId:-"-"}
-    local nodeName="$( echo "$nodeVersion" | awk -F'hostname=' '{print $2}' | cut -d' ' -f1 )"; nodeName=${nodeName:-"-"}
-    echo "nodeVersion=$nodeVersion nodId=$nodeId nodeName=$nodeName"
+    local dst=
+    for dst in $ANA_DSTS_IP4; do
 
-    ana_create_role_key_dirs $ANA_ATTACK_PEN_LEVEL
-    touch $ANA_MLC_KEYS_DIR/orange-trusted-nodes/$nodeId.$nodeName
+	local nodeVersion="$(     ssh root@$dst "( bmx7 -c version || bmx7 nodeSignatureLen=$rsaLen /keyPath=/etc/bmx7/rsa.$rsaLen version ) | grep version=BMX" )"
+	local nodeId="$( echo "$nodeVersion" | awk -F'id=' '{print $2}' | cut -d' ' -f1 )"; nodeId=${nodeId:-"-"}
+	local nodeName="$( echo "$nodeVersion" | awk -F'hostname=' '{print $2}' | cut -d' ' -f1 )"; nodeName=${nodeName:-"-"}
+	echo "nodeVersion=$nodeVersion nodId=$nodeId nodeName=$nodeName"
 
-    ssh root@$ANA_DST1_IP4 "mkdir -p /$ANA_NODE_TRUSTED_DIR; rm -f /$ANA_NODE_TRUSTED_DIR/*"
-    scp $ANA_MLC_KEYS_DIR/orange-trusted-nodes/* root@o101:/$ANA_NODE_TRUSTED_DIR/
+	ana_create_role_key_dirs $ANA_ATTACK_PEN_LEVEL
+	touch $ANA_MLC_KEYS_DIR/orange-trusted-nodes/$nodeId.$nodeName
+
+	ssh root@$dst "mkdir -p /$ANA_NODE_TRUSTED_DIR; rm -f /$ANA_NODE_TRUSTED_DIR/*"
+	scp $ANA_MLC_KEYS_DIR/orange-trusted-nodes/* root@$dst:/$ANA_NODE_TRUSTED_DIR/
+    done
 }
 
 ana_bench_tp_owrt() {

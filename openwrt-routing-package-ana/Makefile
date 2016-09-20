@@ -15,15 +15,16 @@ define Package/ana
   TITLE:=Analysis tools for mesh routing protocols
   URL:=http://dev.qmp.cat/ana
   DEPENDS:=\
-	+coreutils +coreutils-timeout +coreutils-kill +less \
+	+coreutils +coreutils-timeout +coreutils-kill \
 	+iputils-ping6 +iputils-ping +iputils-tracepath +iputils-tracepath6 +iputils-traceroute6 \
 	+ip-full +ipip +iperf-mt \
 	+libpolarssl +zlib +kmod-ip6-tunnel +kmod-iptunnel6 +kmod-tun \
-	+iw  +wireless-tools +iwinfo +libiw \
+	+iw +wireless-tools +libiwinfo \
 	+iptables +ip6tables 
 
 
 # and deselect if needed: odhcpc ppp wpad-mini hostapd 
+#  +less  +iwinfo
 #       +netcat
 #       +mtr +netperf 
 #	+@BUSYBOX_CONFIG_KILLALL5

@@ -81,3 +81,6 @@ ssh root@103.130.30.200
   bmx6 dev=eth0:bmx6 dev=ath0:bmx6 -d3
 
 #########################
+
+
+while true; do bmx7 -cp >/dev/null && bmx7 -lc p s s s i s l /r=2 s k /r=1 traffic=eth1; sleep 1; done

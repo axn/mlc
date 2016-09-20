@@ -17,6 +17,17 @@ config interface 'lan'
 	option netmask '255.255.255.0'
 	option ip6assign '60'
 
+config device 'lm_net_eth0_bmx6_dev'
+        option type '8021ad'
+        option name 'eth0_13'
+        option ifname 'eth0'
+        option vid '13'
+        option mtu '1398'
+
+config interface 'lm_net_eth0_bmx6_if'
+        option proto 'none'
+        option auto '1'
+        option ifname 'eth0_13'
 
 config interface wmesh0
 #        option ifname wlan0

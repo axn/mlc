@@ -13,11 +13,12 @@ start_service() {
 	local IP4PREFIX="192.168"
 	local IDX=
 	local BMX=
-
-	ip link show dev eth0 | grep "link/ether" | grep "14:cf:92:52:0f:10" && { IDX=101; BMX="bmx7 dev=wlan0.2 dev=br-lan";  }
-	ip link show dev eth0 | grep "link/ether" | grep "14:cf:92:52:13:a6" && { IDX=102; BMX="bmx7 dev=wlan0.2 dev=wlan0.3"; }
-	ip link show dev eth0 | grep "link/ether" | grep "90:f6:52:7f:b9:b3" && { IDX=103; BMX="bmx7 dev=wlan0.3 dev=wlan0.4"; }
-	ip link show dev eth0 | grep "link/ether" | grep "ec:88:8f:dc:c8:d4" && { IDX=104; BMX="bmx7 dev=wlan0.4 dev=br-lan";  }
+#	local BMXCOMMONS="bmx7 plugin=bmx7_iwinfo.so plugin=bmx7_topology.so "
+	local BMXCOMMONS="bmx7 plugin=bmx7_iwinfo.so plugin=bmx7_tun.so "
+	ip link show dev eth0 | grep "link/ether" | grep "14:cf:92:52:0f:10" && { IDX=101; BMX="$BMXCOMMONS dev=wlan0.2 dev=br-lan";  FIRE="ip6tables -I INPUT -s fe80::ee88:8fff:fedc:c8d4 -i br-lan -j DROP"; }
+	ip link show dev eth0 | grep "link/ether" | grep "14:cf:92:52:13:a6" && { IDX=102; BMX="$BMXCOMMONS dev=wlan0.2 dev=wlan0.3 dev=eth0_13"; FIRE=""; }
+	ip link show dev eth0 | grep "link/ether" | grep "90:f6:52:7f:b9:b3" && { IDX=103; BMX="$BMXCOMMONS dev=wlan0.3 dev=wlan0.4"; FIRE=""; }
+	ip link show dev eth0 | grep "link/ether" | grep "ec:88:8f:dc:c8:d4" && { IDX=104; BMX="$BMXCOMMONS dev=wlan0.4 dev=br-lan";  FIRE="ip6tables -I INPUT -s fe80::16cf:92ff:fe52:f10  -i br-lan -j DROP"; }
 	
 	uci set system.@system[0].hostname="o$IDX"
 	uci commit system
@@ -27,12 +28,17 @@ start_service() {
 	uci set network.wmesh0_3.ipaddr="$IP4PREFIX.3.$IDX"
 	uci set network.wmesh0_4.ipaddr="$IP4PREFIX.4.$IDX"
 	uci commit network
+	wifi
 
 	# sleep 5
 	# cat /proc/sys/kernel/hostname | grep "o$DIX" || reboot
+
+	while killall bmx7; do timeout 0.2 sleep 1d; done
+
+	ps | grep "iperf -Vs" | grep -v grep || iperf -Vs &
+	ip6tables --flush
+	$FIRE
 	$BMX
-
-
 }
 
 service_triggers()
