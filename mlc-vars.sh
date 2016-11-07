@@ -1898,6 +1898,9 @@ config 'plugin'
 config 'plugin'
         option 'plugin' 'bmx6_table.so'
 
+config 'plugin'
+        option 'plugin' 'bmx6_topology.so'
+
 #config 'ipVersion'
 #       option 'ipVersion' '6'
 #       option 'throwRules' '0'
@@ -1943,10 +1946,10 @@ EOF
 # configure bmx7
 cat <<EOF > $vm_rootfs/etc/config/bmx7
 
-config 'bmx7' 'general'
-        option 'trustedNodesDir' '/etc/bmx7/trustedNodes'
-        option 'tunOutTimeout' '5000'
-        option 'descCompression' '1'
+#config 'bmx7' 'general'
+#        option 'trustedNodesDir' '/etc/bmx7/trustedNodes'
+#        option 'tunOutTimeout' '5000'
+#        option 'descCompression' '1'
 
 config 'plugin'
         option 'plugin' 'bmx7_config.so'
@@ -1961,6 +1964,12 @@ config 'plugin'
         option 'plugin' 'bmx7_tun.so'
 
 config 'plugin'
+        option 'plugin' 'bmx7_topology.so'
+
+#config 'plugin'
+#        option 'plugin' 'bmx7_iwinfo.so'
+
+config 'plugin'
         option 'plugin' 'bmx7_table.so'
 
 #config 'ipVersion'
@@ -1972,6 +1981,12 @@ config 'plugin'
 config dev
 #	option dev $mlc_net12_name
 	option dev $mlc_net1_name
+
+config dev
+	option dev $mlc_net22_name
+
+config 'unicastHna'
+        option 'unicastHna' $mlc_ip6_ripe3_prefix:$vm_id::/64
 
 config 'tunDev' default
         option 'tunDev' 'default'
@@ -1990,17 +2005,17 @@ config 'tunOut' ip4
 #        option 'ipMetric' '2000'
 
 
-config 'redistTable'
-        option 'redistTable' 'bla'
-        option 'table' '110'
-        option 'all' '1'
-        option 'sys' '60'
+#config 'redistTable'
+#        option 'redistTable' 'bla'
+#        option 'table' '110'
+#        option 'all' '1'
+#        option 'sys' '60'
 
-config 'redistTable'
-        option 'redistTable' 'myBird'
-        option 'table' '110'
-        option 'all' '1'
-        option 'sys' '12'
+#config 'redistTable'
+#        option 'redistTable' 'myBird'
+#        option 'table' '110'
+#        option 'all' '1'
+#        option 'sys' '12'
 
 EOF
 

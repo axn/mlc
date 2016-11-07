@@ -84,3 +84,6 @@ ssh root@103.130.30.200
 
 
 while true; do bmx7 -cp >/dev/null && bmx7 -lc p s s s i s l /r=2 s k /r=1 traffic=eth1; sleep 1; done
+
+watch -n0.3 "bmx7 -c p s s s i traffic=eth1 s l s o /r=1 s tr > bmx7.dump && mv bmx7.dump bmx7.safe; cat bmx7.safe"
+
