@@ -592,7 +592,7 @@ mlc_loop() {
       [ "$loop_update" == "1" ]  && echo "updating   $loop_name" && $loop_pretend mlc_update_individual $node $loop_config
       [ "$loop_boot" == "1" ]    && echo "booting    $loop_name" && \
 	  mlc_cpu_sleep_until_idle  &&  sync  && $loop_pretend MLC_loop_boot $node
-      [ "$loop_stop" == "1" ]    && echo "stopping   $loop_name" && $loop_pretend lxc-stop -n $mlc_name_prefix$node
+      [ "$loop_stop" == "1" ]    && echo "stopping   $loop_name" && $loop_pretend lxc-stop -n $mlc_name_prefix$node -t 1
       [ "$loop_destroy" == "1" ] && echo "destroying $loop_name" && $loop_pretend mlc_destroy $node
       [ "$loop_exec" != "0" ]    && echo "executing  $loop_name $loop_exec" && $loop_pretend $mlc_ssh root@"$(MLC_calc_ip4 $mlc_ip4_admin_prefix1 $node $mlc_admin_idx )" $loop_exec
   done
