@@ -26,7 +26,7 @@ ANA_LINKS_MAX=40
 
 ANA_LINK_RSA_LEN=3 # 3:896
 ANA_LINK_DHM_LEN=17 # 16:DH1024M112, 17:DH2048M112, 18:3072M112 
-ANA_LINK_DHM_MAX=255 # maxDhmNeighs 0 vs 255
+ANA_LINK_DHM_MAX=40 # maxDhmNeighs 0 vs 40
 ANA_NODE_KEY_LEN=${1:-6} # 6:2048
 
 echo "ANA_NODE_KEY_LEN=$ANA_NODE_KEY_LEN"
@@ -83,7 +83,7 @@ ANA_E2E_SRC4=10.0.10.0
 ANA_PING_DEADLINE=20
 ANA_STABILIZE_TIME=120
 ANA_MEASURE_TIME=25
-ANA_MEASURE_ROUNDS=6
+ANA_MEASURE_ROUNDS=4
 ANA_MEASURE_PROBES=10 #10
 ANA_MEASURE_GAP=2
 ANA_UPD_PERIOD=4 #2
@@ -502,6 +502,7 @@ ana_measure_ovhd_owrt() {
 
 	local links="$(   cat $tmpDir/bmxOI.out | awk -F'nbs=' '{print $2}' | cut -d' ' -f1 )"
 	local nodes="$(   cat $tmpDir/bmxOI.out | awk -F'nodes=' '{print $2}' | cut -d'/' -f1 )"
+	local routes="$(  cat $tmpDir/bmxOI.out | awk -F'rts=' '{print $2}' | cut -d'/' -f1 )"
 	local bmxCpu="$(  cat $tmpDir/bmxOI.out | awk -F'cpu=' '{print $2}' | cut -d' ' -f1 )"
 	local txPps="$(   cat $tmpDir/bmxOI.out | awk -F'txBpP=' '{print $2}' | cut -d' ' -f1 | cut -d '/' -f2)"
 	local txBps="$(   cat $tmpDir/bmxOI.out | awk -F'txBpP=' '{print $2}' | cut -d' ' -f1 | cut -d '/' -f1)"
@@ -535,13 +536,13 @@ ana_measure_ovhd_owrt() {
 	local rxBL=$(cat $tmpDir/tcpOL.out | awk -F'rxB=' '{print $2}'| cut -d' ' -f1)
 	local idSL=$(cat $tmpDir/topSL.out | awk -F'idl=' '{print $2}'| cut -d' ' -f1)
 
-	FORMAT="%16s %16s %8s %5s %9s   %6s %6s %20s %11s %11s %11s %9s   %5s %10s %6s %3s   %4s %4s %6s %4s %4s %4s   %8s %8s %8s %8s  %8s %8s %8s %8s   %11s %6s" 
-	FIELDS="start end duration probe revision  Links Nodes linkKeys linkRsa linkDhm nodeRsa updPeriod  txq tp rtt ttl  CPU BCPU Memory idOI idSI idSL  outPps txPL outBps txBL inPps rxPL inBps rxBL  uptime lstDsc"
+	FORMAT="%16s %16s %8s %5s %9s   %6s %6s %6s %20s %11s %11s %11s %9s   %5s %10s %6s %3s   %4s %4s %6s %4s %4s %4s   %8s %8s %8s %8s  %8s %8s %8s %8s   %11s %6s" 
+	FIELDS="start end duration probe revision  Links Routes Nodes linkKeys linkRsa linkDhm nodeRsa updPeriod  txq tp rtt ttl  CPU BCPU Memory idOI idSI idSL  outPps txPL outBps txBL inPps rxPL inBps rxBL  uptime lstDsc"
 	printf "$FORMAT \n" $FIELDS
 	[ -f $resultsFile ] || printf "$FORMAT \n" $FIELDS > $resultsFile
 	printf "$FORMAT \n" \
 	    $start $(ana_time_stamp) ${duration:-"NA"} $probe ${rev:-"NA"} \
-	    ${links:-"NA"} ${nodes:-"NA"} ${linkKeys:-"NA"} ${linkRsa:-"NA"} ${linkDhm:-"NA"} ${nodeRsa:-"NA"} ${updPeriod:-"NA"}  \
+	    ${links:-"NA"} ${routes:-"NA"} ${nodes:-"NA"} ${linkKeys:-"NA"} ${linkRsa:-"NA"} ${linkDhm:-"NA"} ${nodeRsa:-"NA"} ${updPeriod:-"NA"}  \
 	    ${txq:-"NA"} ${tpOL:-"NA"} ${rttL:-"NA"} ${ttlL:-"NA"} \
 	    ${cpOI:-"NA"} ${bmxCpu:-"NA"} ${mmOI:-"NA"} ${idOI:-"NA"} ${idSI:-"NA"} ${idSL:-"NA"} \
 	    ${txPI:-"NA"} ${txPL:-"NA"} ${txBI:-"NA"} ${txBL:-"NA"} ${rxPI:-"NA"} ${rxPL:-"NA"} ${rxBI:-"NA"} ${rxBL:-"NA"} \
@@ -778,14 +779,17 @@ ana_run_ovhd_scenarios() {
     local params=
     local p=
     local results=
+    local resultsExtension=
     local round=
 
     for round in $(seq 1 $ANA_MEASURE_ROUNDS); do
 
 	if [ "$((( $round % 2 )))" = "1" ]; then
-	    ANA_LINK_DHM_MAX=255 # maxDhmNeighs 0 vs 255
+	    ANA_LINK_DHM_MAX=40 # maxDhmNeighs 0 vs 40
+	    resultsExtension=dhm
 	else
-	    ANA_LINK_DHM_MAX=0 # maxDhmNeighs 0 vs 255
+	    ANA_LINK_DHM_MAX=0 # maxDhmNeighs 0 vs 40
+	    resultsExtension=rsa
 	fi
 	echo ANA_LINK_DHM_MAX=$ANA_LINK_DHM_MAX
 
@@ -793,24 +797,11 @@ ana_run_ovhd_scenarios() {
 	ana_get_keys    $ANA_NODE_KEY_LEN all
 	ana_create_keys $ANA_NODE_KEY_LEN all
 
-	if true; then
-
-	    if true; then
-		params="30 40 50 60 70 80 90 100 110 120 130 140 150 160 170 180 190 200"
-		results="$(dirname $ANA_RESULTS_FILE)/$(ana_time_stamp)-ovhdVsNodes"
-		ana_create_protos 0
-		ana_create_links_owrt
-		for p in $params; do
-		    ana_create_protos $p
-		    echo "$(ana_time_stamp) MEASURING to $results p=$p of $params"
-		    sleep $ANA_STABILIZE_TIME
-		    ana_measure_ovhd_owrt $results $ANA_RT_LOAD
-		done
-	    fi
-
 	    if true; then
 		params="4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20"
-		results="$(dirname $ANA_RESULTS_FILE)/$(ana_time_stamp)-ovhdVsLinks"
+		params="4 6 8 10 12 14 16 18 20 22 24 26 28 30 32 34 36 38 40"
+#		params="20 25 30 35 38 40"
+		results="$(dirname $ANA_RESULTS_FILE)/$(ana_time_stamp)-ovhdVsLinks-$resultsExtension"
 		ana_create_protos 0
 		ana_create_links_owrt 0
 		ana_create_protos
@@ -822,10 +813,26 @@ ana_run_ovhd_scenarios() {
 		done
 	    fi
 
+	if false; then
+
+	    if true; then
+		params="30 40 50 60 70 80 90 100 110 120 130 140 150 160 170 180 190 200"
+		results="$(dirname $ANA_RESULTS_FILE)/$(ana_time_stamp)-ovhdVsNodes-$resultsExtension"
+		ana_create_protos 0
+		ana_create_links_owrt
+		for p in $params; do
+		    ana_create_protos $p
+		    echo "$(ana_time_stamp) MEASURING to $results p=$p of $params"
+		    sleep $ANA_STABILIZE_TIME
+		    ana_measure_ovhd_owrt $results $ANA_RT_LOAD
+		done
+	    fi
+
+
 	    if true; then
 		params="30 20 15 10 7 5 4 3 2 1 0.7 0.5 0.4 0.3 0.2"
 #		params="7 5 4 3 2 1 0.5"
-		results="$(dirname $ANA_RESULTS_FILE)/$(ana_time_stamp)-ovhdVsUpdates"
+		results="$(dirname $ANA_RESULTS_FILE)/$(ana_time_stamp)-ovhdVsUpdates-$resultsExtension"
 		ana_create_protos 0
 		ana_create_links_owrt
 		ana_create_protos
@@ -838,7 +845,7 @@ ana_run_ovhd_scenarios() {
 
 	    if true; then
 		params="-15 -10 -5 -3 -2"
-		results="$(dirname $ANA_RESULTS_FILE)/$(ana_time_stamp)-ovhdVsOwnUpdates"
+		results="$(dirname $ANA_RESULTS_FILE)/$(ana_time_stamp)-ovhdVsOwnUpdates-$resultsExtension"
 		ana_create_protos 0
 		ana_create_links_owrt
 		ana_create_protos
@@ -851,7 +858,7 @@ ana_run_ovhd_scenarios() {
 
 	    if true && [ "$ANA_LINK_DHM_MAX" = "0" ]; then
 		params="1 2 3 4 5" #1:512, 2:768, 3:896, 4:1024, 5:1536, 6:2048
-		results="$(dirname $ANA_RESULTS_FILE)/$(ana_time_stamp)-ovhdVsTxCrypt"
+		results="$(dirname $ANA_RESULTS_FILE)/$(ana_time_stamp)-ovhdVsTxCrypt-$resultsExtension"
 		ana_create_protos 0
 		ana_create_links_owrt
 		ana_create_protos
@@ -862,9 +869,9 @@ ana_run_ovhd_scenarios() {
 		    ana_measure_ovhd_owrt $results $ANA_RT_LOAD
 		done
 
-	    elif true && [ "$ANA_LINK_DHM_MAX" = "255" ]; then
+	    elif true && [ "$ANA_LINK_DHM_MAX" = "40" ]; then
 		params="16 17 18" #16:DH1024M112, 17:DH2048M112, 18:3072M112
-		results="$(dirname $ANA_RESULTS_FILE)/$(ana_time_stamp)-ovhdVsTxDhm"
+		results="$(dirname $ANA_RESULTS_FILE)/$(ana_time_stamp)-ovhdVsTxCrypt-$resultsExtension"
 		ana_create_protos 0
 		ana_create_links_owrt
 		ana_create_protos
@@ -878,7 +885,7 @@ ana_run_ovhd_scenarios() {
 
 	    if true; then
 		params="1 2 3 4 5 6 7 8 " #1:512, 2:768, 3:896, 4:1024, 5:1536, 6:2048, 7:3072, 8:4096
-		results="$(dirname $ANA_RESULTS_FILE)/$(ana_time_stamp)-ovhdVsIdCrypt"
+		results="$(dirname $ANA_RESULTS_FILE)/$(ana_time_stamp)-ovhdVsIdCrypt-$resultsExtension"
 		ana_create_links_owrt
 		for p in $params; do
 		    ana_create_protos 0
