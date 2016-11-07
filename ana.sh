@@ -502,7 +502,7 @@ ana_measure_ovhd_owrt() {
 
 	local links="$(   cat $tmpDir/bmxOI.out | awk -F'nbs=' '{print $2}' | cut -d' ' -f1 )"
 	local nodes="$(   cat $tmpDir/bmxOI.out | awk -F'nodes=' '{print $2}' | cut -d'/' -f1 )"
-	local routes="$(  cat $tmpDir/bmxOI.out | awk -F'rts=' '{print $2}' | cut -d'/' -f1 )"
+	local routes="$(  cat $tmpDir/bmxOI.out | awk -F'rts=' '{print $2}' | cut -d' ' -f1 )"
 	local bmxCpu="$(  cat $tmpDir/bmxOI.out | awk -F'cpu=' '{print $2}' | cut -d' ' -f1 )"
 	local txPps="$(   cat $tmpDir/bmxOI.out | awk -F'txBpP=' '{print $2}' | cut -d' ' -f1 | cut -d '/' -f2)"
 	local txBps="$(   cat $tmpDir/bmxOI.out | awk -F'txBpP=' '{print $2}' | cut -d' ' -f1 | cut -d '/' -f1)"
