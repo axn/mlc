@@ -5,31 +5,22 @@ set +x
 mlc_cpu_idle_assumption=35
 #set -x
 
-ANA_SSH="$mlc_ssh -i /home/neumann/.ssh/id_rsa "
 ANA_MLC_DIR="/home/neumann/mlc-public.git"
+ANA_SSH="$mlc_ssh -i /home/neumann/.ssh/id_rsa "
 ANA_OWRT_DIR="/home/neumann/openwrt/openwrt-15.05.git"
-ANA_RESULTS_DIR="$ANA_MLC_DIR/ana"
 ANA_RESULTS_FILE_PREFIX="results-01"
 ANA_PROT_DIR="/usr/src/bmx7.git"
 ANA_NODE_TRUSTED_DIR="etc/bmx7/trustedNodes"
 ANA_NODE_ATTACKED_DIR="etc/bmx7/attackedNodes"
 ANA_NODE_ALLKEYS_DIR="etc/bmx7/allNodes"
 ANA_NODE_KEYS_DIR="usr/src/bmxKeys"
-ANA_MLC_KEYS_DIR=$ANA_MLC_DIR/rootfs/mlc0002/rootfs/$ANA_NODE_KEYS_DIR
 
-ANA_NODES_DEF=100 # 100
-ANA_NODES_MIN=10
-
-ANA_LINKS_DEF=4
-ANA_LINKS_MIN=1
-ANA_LINKS_MAX=40
 
 ANA_LINK_RSA_LEN=3 # 3:896
 ANA_LINK_DHM_LEN=17 # 16:DH1024M112, 17:DH2048M112, 18:3072M112 
 ANA_LINK_DHM_MAX=40 # maxDhmNeighs 0 vs 40
-ANA_NODE_KEY_LEN=${1:-6} # 6:2048
+ANA_NODE_KEY_LEN=6 # 6:2048
 
-echo "ANA_NODE_KEY_LEN=$ANA_NODE_KEY_LEN"
 
 ANA_MBR=1
 ANA_LQ=3
@@ -42,23 +33,6 @@ ANA_DST_DEVS="dev=br-lan"
 ANA_PROTO_CMD="bmx7 d=0"
 ANA_UDP_PORT="6270"
 
-################################
-# for attack scenarios:
-ANA_NODES_MAX=165 # 150
-ANA_ATTACK_PEN_LEVEL=0
-ANA_ATTACK_TOPO_COLS=15
-ANA_ATTACK_TOPO_ROLES=3
-ANA_MAIN_OPTS="linkKeyLifetime=0 linkRsaKey=$ANA_LINK_RSA_LEN linkDhmKey=$ANA_LINK_DHM_LEN trustedNodesDir=/$ANA_NODE_TRUSTED_DIR attackedNodesDir=/$ANA_NODE_ATTACKED_DIR evilRouteDropping=1 evilDescDropping=1"
-
-# for owrt perf scenarios:
-ANA_NODES_MAX=200
-ANA_ATTACK_PEN_LEVEL=0
-ANA_ATTACK_TOPO_COLS=10
-ANA_ATTACK_TOPO_ROLES=1
-ANA_MAIN_OPTS="linkKeyLifetime=0 linkRsaKey=$ANA_LINK_RSA_LEN linkDhmKey=$ANA_LINK_DHM_LEN trustedNodesDir=/$ANA_NODE_TRUSTED_DIR"
-################################
-
-
 ANA_DST_DEV=eth1
 ANA_DST_SRC=192.168.1.76/24
 ANA_DST1_MAC=14:cf:92:52:0f:10
@@ -69,13 +43,6 @@ ANA_DSTS_IP4="192.168.1.102"
 ANA_DSTS_IP4="192.168.1.101 192.168.1.102 192.168.1.103 192.168.1.104"
 ANA_DSTS_IP4="192.168.1.101"
 ANA_DST_SYS=""
-#ANA_DST_PACKAGES="$ANA_OWRT_DIR/bin/ar71xx/packages/routing/bmx7_*.ipk $ANA_OWRT_DIR/bin/ar71xx/packages/routing/bmx7-tun*.ipk"
-ANA_DST_PACKAGES="$ANA_OWRT_DIR/bin/ar71xx/packages/routing/bmx7_*.ipk $ANA_OWRT_DIR/bin/ar71xx/packages/routing/bmx7-iwinfo_*.ipk $ANA_OWRT_DIR/bin/ar71xx/packages/routing/bmx7-topology_*.ipk openwrt-routing-package-ana/files/etc/init.d/ana openwrt-routing-package-ana/files/etc/config/wireless"
-ANA_DST_PACKAGES="$ANA_OWRT_DIR/bin/ar71xx/packages/routing/bmx7_*.ipk $ANA_OWRT_DIR/bin/ar71xx/packages/routing/bmx7-iwinfo_*.ipk $ANA_OWRT_DIR/bin/ar71xx/packages/routing/bmx7-tun_*ipk openwrt-routing-package-ana/files/etc/init.d/ana openwrt-routing-package-ana/files/etc/config/wireless"
-ANA_DST_PACKAGES="$ANA_OWRT_DIR/bin/ar71xx/packages/routing/bmx7_*.ipk openwrt-routing-package-ana/files/etc/init.d/ana openwrt-routing-package-ana/files/etc/config/wireless"
-ANA_DST_BMX7_UPD="ana-owrt-bmx7-upd.sh"
-ANA_DST_FILES="$ANA_MLC_DIR/$ANA_DST_BMX7_UPD"
-
 
 ANA_E2E_DST=mlc1003
 ANA_E2E_SRC4=10.0.10.0
@@ -87,22 +54,17 @@ ANA_MEASURE_ROUNDS=4
 ANA_MEASURE_PROBES=10 #10
 ANA_MEASURE_GAP=2
 ANA_UPD_PERIOD=4 #2
-ANA_RESULTS_FILE="$ANA_MLC_DIR/ana/results.dat"
+
 ANA_RT_LOAD=1
 ANA_RT_RAISE_TIME=6
 ANA_PROBE_DELAY_TIME=3
 ANA_PROBE_SAFE_TIME=30
 
-
-
-ANA_NODE_MAX=$((( $mlc_min_node + $ANA_NODES_MAX - 1 )))
 ANA_ATTACK_ROLE_COLORS=(orange rosa cyan)
 ANA_CPA_ATTACK_NODE="1009"
 ANA_CPA_TRUST_NODES="1002 1007 1152 1157"
 ANA_NODE_PROBE_PAIRS="1002:1152 1007:1157 1012:1162 1012:1152 1012:1157"
 
-
-ANA_ATTACK_OF_DIR="$ANA_MLC_DIR/ana"
 ANA_ATTACK_OF_PREFIX="role"
 ANA_ROLE_FILE_FORMAT="%-8s %-9s %-8s %-5s %-12s %-8s %-40s %-35s %8s %8s %6s %6s %8s %9s\n"
 ANA_ROLE_FILE_HEADER="topoCols  topoNodes  penLevel  mlcId  mlcIp  nodeName  nodeId  nodeIp  nodeCol  nodeLine  nRLMin        nRLMax        nodeRole  nodeColor"
@@ -125,6 +87,45 @@ ANA_ATTACK_TABLE=( \
     0 0 0 )
 
 
+################################
+# for attack scenarios:
+ANA_NODES_MAX=165 # 150
+ANA_ATTACK_PEN_LEVEL=0
+ANA_ATTACK_TOPO_COLS=15
+ANA_ATTACK_TOPO_ROLES=3
+ANA_MAIN_OPTS="linkKeyLifetime=0 linkRsaKey=$ANA_LINK_RSA_LEN linkDhmKey=$ANA_LINK_DHM_LEN trustedNodesDir=/$ANA_NODE_TRUSTED_DIR attackedNodesDir=/$ANA_NODE_ATTACKED_DIR evilRouteDropping=1 evilDescDropping=1"
+
+# for owrt perf scenarios:
+ANA_NODES_MAX=200
+ANA_MAIN_OPTS="linkKeyLifetime=0 linkRsaKey=$ANA_LINK_RSA_LEN linkDhmKey=$ANA_LINK_DHM_LEN trustedNodesDir=/$ANA_NODE_TRUSTED_DIR"
+################################
+
+ANA_NODES_DEF=100 # 100
+ANA_NODES_MIN=10
+
+ANA_LINKS_DEF=4
+ANA_LINKS_MIN=1
+ANA_LINKS_MAX=40
+
+
+[ -f ./ana-locals.sh ] && . ./ana-locals.sh
+
+ANA_RESULTS_DIR="$ANA_MLC_DIR/ana"
+ANA_MLC_KEYS_DIR=$ANA_MLC_DIR/rootfs/mlc0002/rootfs/$ANA_NODE_KEYS_DIR
+
+ANA_NODE_MAX=$((( $mlc_min_node + $ANA_NODES_MAX - 1 )))
+
+
+#ANA_DST_PACKAGES="$ANA_OWRT_DIR/bin/ar71xx/packages/routing/bmx7_*.ipk $ANA_OWRT_DIR/bin/ar71xx/packages/routing/bmx7-tun*.ipk"
+ANA_DST_PACKAGES="$ANA_OWRT_DIR/bin/ar71xx/packages/routing/bmx7_*.ipk $ANA_OWRT_DIR/bin/ar71xx/packages/routing/bmx7-iwinfo_*.ipk $ANA_OWRT_DIR/bin/ar71xx/packages/routing/bmx7-topology_*.ipk openwrt-routing-package-ana/files/etc/init.d/ana openwrt-routing-package-ana/files/etc/config/wireless"
+ANA_DST_PACKAGES="$ANA_OWRT_DIR/bin/ar71xx/packages/routing/bmx7_*.ipk $ANA_OWRT_DIR/bin/ar71xx/packages/routing/bmx7-iwinfo_*.ipk $ANA_OWRT_DIR/bin/ar71xx/packages/routing/bmx7-tun_*ipk openwrt-routing-package-ana/files/etc/init.d/ana openwrt-routing-package-ana/files/etc/config/wireless"
+ANA_DST_PACKAGES="$ANA_OWRT_DIR/bin/ar71xx/packages/routing/bmx7_*.ipk openwrt-routing-package-ana/files/etc/init.d/ana openwrt-routing-package-ana/files/etc/config/wireless"
+ANA_DST_BMX7_UPD="ana-owrt-bmx7-upd.sh"
+ANA_DST_FILES="$ANA_MLC_DIR/$ANA_DST_BMX7_UPD"
+
+ANA_RESULTS_FILE="$ANA_MLC_DIR/ana/results.dat"
+
+ANA_ATTACK_OF_DIR="$ANA_MLC_DIR/ana"
 
 
 ana_time_stamp() {
@@ -234,8 +235,6 @@ ana_create_protos() {
 
 
 
-
-
 ana_create_net_owrt() {
     mlc_net_flush
     mlc_configure_grid $ANA_MBR $ANA_LQ 0 0 0
@@ -258,25 +257,6 @@ ana_create_links_owrt() {
 #   mlc_mac_set $ANA_MBR 1009 $ANA_DST_DEV $ANA_DST2_MAC 0
 }
 
-ana_create_keys_owrt() {
-
-    local rsaLen=${1:-"$ANA_NODE_KEY_LEN"}
-
-    local dst=
-    for dst in $ANA_DSTS_IP4; do
-
-	local nodeVersion="$(     ssh root@$dst "( bmx7 -c version || bmx7 nodeRsaKey=$rsaLen /keyPath=/etc/bmx7/rsa.$rsaLen version ) | grep version=BMX" )"
-	local nodeId="$( echo "$nodeVersion" | awk -F'id=' '{print $2}' | cut -d' ' -f1 )"; nodeId=${nodeId:-"-"}
-	local nodeName="$( echo "$nodeVersion" | awk -F'hostname=' '{print $2}' | cut -d' ' -f1 )"; nodeName=${nodeName:-"-"}
-	echo "nodeVersion=$nodeVersion nodId=$nodeId nodeName=$nodeName"
-
-	ana_create_role_key_dirs $ANA_ATTACK_PEN_LEVEL
-	touch $ANA_MLC_KEYS_DIR/orange-trusted-nodes/$nodeId.$nodeName
-
-	ssh root@$dst "mkdir -p /$ANA_NODE_TRUSTED_DIR; rm -f /$ANA_NODE_TRUSTED_DIR/*"
-	scp $ANA_MLC_KEYS_DIR/orange-trusted-nodes/* root@$dst:/$ANA_NODE_TRUSTED_DIR/
-    done
-}
 
 ana_create_keys() {
 
@@ -560,6 +540,219 @@ ana_measure_ovhd_owrt() {
 
 
 
+
+ana_init_ovhd_scenarios() {
+
+    killall -w $ANA_PROTO
+
+    ./mlc-init-host.sh
+    
+    ana_create_nodes
+    ana_create_net_owrt
+    ana_create_links_owrt
+    ana_update_dst
+    ana_update_mlc
+    ana_create_protos 0
+}
+
+ana_set_protos_owrt() {
+    local nodes=${1:-$ANA_NODES_DEF}
+    local param="${2:-"date"}"
+
+    ssh root@$ANA_DST1_IP4 "$param"
+    mlc_loop -la $((( $mlc_min_node + $nodes - 1 ))) -e "$param"
+}
+
+ana_run_ovhd_scenarios() {
+
+#    ana_init_ovhd_scenarios
+#    ana_create_protos 0
+#    ana_get_keys    $ANA_NODE_KEY_LEN all
+#    ana_create_keys $ANA_NODE_KEY_LEN all
+
+    local params=
+    local p=
+    local results=
+    local resultsExtension=
+    local round=
+
+    for round in $(seq 1 $ANA_MEASURE_ROUNDS); do
+
+	if [ "$((( $round % 2 )))" = "1" ]; then
+	    ANA_LINK_DHM_MAX=40 # maxDhmNeighs 0 vs 40
+	    resultsExtension=dhm
+	else
+	    ANA_LINK_DHM_MAX=0 # maxDhmNeighs 0 vs 40
+	    resultsExtension=rsa
+	fi
+	echo ANA_LINK_DHM_MAX=$ANA_LINK_DHM_MAX
+
+	ana_create_protos 0
+	ana_get_keys    $ANA_NODE_KEY_LEN all
+	ana_create_keys $ANA_NODE_KEY_LEN all
+
+	if true; then
+
+	    if true; then
+		params="30 40 50 60 70 80 90 100 110 120 130 140 150 160 170 180 190 200"
+		results="$(dirname $ANA_RESULTS_FILE)/$(ana_time_stamp)-ovhdVsNodes-$resultsExtension"
+		ana_create_protos 0
+		ana_create_links_owrt
+		for p in $params; do
+		    ana_create_protos $p
+		    echo "$(ana_time_stamp) MEASURING to $results p=$p of $params"
+		    sleep $ANA_STABILIZE_TIME
+		    ana_measure_ovhd_owrt $results $ANA_RT_LOAD
+		done
+	    fi
+
+	    if true; then
+		params="4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20"
+		params="4 6 8 10 12 14 16 18 20 22 24 26 28 30 32 34 36 38 40"
+#		params="20 25 30 35 38 40"
+		results="$(dirname $ANA_RESULTS_FILE)/$(ana_time_stamp)-ovhdVsLinks-$resultsExtension"
+		ana_create_protos 0
+		ana_create_links_owrt 0
+		ana_create_protos
+		for p in $params; do
+		    ana_create_links_owrt $p
+		    echo "$(ana_time_stamp) MEASURING to $results p=$p of $params"
+		    sleep $ANA_STABILIZE_TIME
+		    ana_measure_ovhd_owrt $results $ANA_RT_LOAD
+		done
+	    fi
+
+	    if true; then
+		params="30 20 15 10 7 5 4 3 2 1 0.7 0.5 0.4 0.3 0.2"
+#		params="7 5 4 3 2 1 0.5"
+		results="$(dirname $ANA_RESULTS_FILE)/$(ana_time_stamp)-ovhdVsUpdates-$resultsExtension"
+		ana_create_protos 0
+		ana_create_links_owrt
+		ana_create_protos
+		sleep $ANA_STABILIZE_TIME
+		for p in $params; do
+		    echo "$(ana_time_stamp) MEASURING to $results p=$p of $params"
+		    ana_measure_ovhd_owrt $results $ANA_RT_LOAD $p
+		done
+	    fi
+
+	    if true; then
+		params="-15 -10 -5 -3 -2"
+		results="$(dirname $ANA_RESULTS_FILE)/$(ana_time_stamp)-ovhdVsOwnUpdates-$resultsExtension"
+		ana_create_protos 0
+		ana_create_links_owrt
+		ana_create_protos
+		sleep $ANA_STABILIZE_TIME
+		for p in $params; do
+		    echo "$(ana_time_stamp) MEASURING to $results p=$p of $params"
+		    ana_measure_ovhd_owrt $results $ANA_RT_LOAD $p
+		done
+	    fi
+
+	    if true && [ "$ANA_LINK_DHM_MAX" = "0" ]; then
+		params="1 2 3 4 5" #1:512, 2:768, 3:896, 4:1024, 5:1536, 6:2048
+		results="$(dirname $ANA_RESULTS_FILE)/$(ana_time_stamp)-ovhdVsTxCrypt-$resultsExtension"
+		ana_create_protos 0
+		ana_create_links_owrt
+		ana_create_protos
+		for p in $params; do
+		    ana_set_protos_owrt $ANA_NODES_DEF "bmx7 -c linkRsaKey=$p"
+		    echo "$(ana_time_stamp) MEASURING to $results p=$p of $params"
+		    sleep $ANA_STABILIZE_TIME
+		    ana_measure_ovhd_owrt $results $ANA_RT_LOAD
+		done
+
+	    elif true && [ "$ANA_LINK_DHM_MAX" = "40" ]; then
+		params="16 17 18" #16:DH1024M112, 17:DH2048M112, 18:3072M112
+		results="$(dirname $ANA_RESULTS_FILE)/$(ana_time_stamp)-ovhdVsTxCrypt-$resultsExtension"
+		ana_create_protos 0
+		ana_create_links_owrt
+		ana_create_protos
+		for p in $params; do
+		    ana_set_protos_owrt $ANA_NODES_DEF "bmx7 -c linkDhmKey=$p"
+		    echo "$(ana_time_stamp) MEASURING to $results p=$p of $params"
+		    sleep $ANA_STABILIZE_TIME
+		    ana_measure_ovhd_owrt $results $ANA_RT_LOAD
+		done
+	    fi
+
+	    if true; then
+		params="1 2 3 4 5 6 7 8 " #1:512, 2:768, 3:896, 4:1024, 5:1536, 6:2048, 7:3072, 8:4096
+		results="$(dirname $ANA_RESULTS_FILE)/$(ana_time_stamp)-ovhdVsIdCrypt-$resultsExtension"
+		ana_create_links_owrt
+		for p in $params; do
+		    ana_create_protos 0
+		    ana_get_keys    $p all
+		    ana_create_keys $p all
+		    ana_create_protos $ANA_NODES_DEF $p 
+		    echo "$(ana_time_stamp) MEASURING to $results p=$p of $params"
+		    sleep $ANA_STABILIZE_TIME
+		    ana_measure_ovhd_owrt $results $ANA_RT_LOAD
+		done
+	    fi
+
+	fi
+    done
+}
+
+
+
+
+
+sec_create_protos_mlc() {
+    local nodes=${1:-$ANA_NODES_DEF}
+
+    local ANA_MLC_CMD="rm -rf /root/bmx7/*; mkdir -p /root/bmx7; cd /root/bmx7; ulimit -c 20000; \
+   $ANA_PROTO_CMD plugin=bmx7_evil.so nodeRsaKey=$ANA_NODE_KEY_LEN /keyPath=/etc/bmx7/rsa.$ANA_NODE_KEY_LEN $ANA_MAIN_OPTS maxDhmNeighs=$ANA_LINK_DHM_MAX $ANA_MLC_DEVS \
+   > /root/bmx7/bmx7.log 2>&1 &"
+
+    if [ "$nodes" = "0" ]; then
+	killall -w $ANA_PROTO
+
+    else
+
+	[ $nodes -lt $ANA_NODES_MAX ] && \
+	    mlc_loop -i $((( 1000 + $nodes ))) -a $((( 1000 + $ANA_NODES_MAX - 1))) -e "killall -w $ANA_PROTO"
+
+# ANA_PROTO_RM:
+	rm -f $ANA_MLC_DIR/rootfs/mlc*/rootfs/etc/config/bmx7
+
+	local bmxPs=$(ps aux | grep "$ANA_PROTO_CMD" | grep -v grep | wc -l)
+
+	[ $nodes -gt $bmxPs ] && \
+	    mlc_loop -li $(((1000 + $bmxPs ))) -a $((( 1000 + $nodes - 1))) -e "$ANA_MLC_CMD"
+
+    fi
+}
+
+
+sec_create_net() {
+    mlc_net_flush
+    mlc_configure_grid 1 3 0 0 0 1 $ANA_NODE_MAX 1010 3 0 0 10 1
+    
+
+}
+
+sec_init_attack_scenarios() {
+
+    ./mlc-init-host.sh
+
+    ana_create_nodes
+
+    sec_create_protos_mlc 0
+    sec_create_protos_mlc
+
+    
+
+
+}
+
+
+
+
+
+
+
 ana_fetch_node_role() {
 
     local anaId=${1:-$mlc_min_node}
@@ -742,168 +935,6 @@ ana_create_role_key_dirs() {
     ana_create_role_dir_links $penLevel
 }
 
-
-ana_init_ovhd_scenarios() {
-
-    killall -w $ANA_PROTO
-
-    ./mlc-init-host.sh
-    
-    ana_create_nodes
-    ana_create_net_owrt
-    ana_create_links_owrt
-    ana_update_dst
-    ana_update_mlc
-    ana_create_protos 0
-#    ana_get_keys    $ANA_NODE_KEY_LEN all
-#    ana_create_keys $ANA_NODE_KEY_LEN all
-#    ana_fetch_roles 0
-#    ana_create_keys_owrt
-}
-
-ana_set_protos_owrt() {
-    local nodes=${1:-$ANA_NODES_DEF}
-    local param="${2:-"date"}"
-
-    ssh root@$ANA_DST1_IP4 "$param"
-    mlc_loop -la $((( $mlc_min_node + $nodes - 1 ))) -e "$param"
-}
-
-ana_run_ovhd_scenarios() {
-
-#    ana_init_ovhd_scenarios
-#    ana_create_protos 0
-#    ana_get_keys    $ANA_NODE_KEY_LEN all
-#    ana_create_keys $ANA_NODE_KEY_LEN all
-
-    local params=
-    local p=
-    local results=
-    local resultsExtension=
-    local round=
-
-    for round in $(seq 1 $ANA_MEASURE_ROUNDS); do
-
-	if [ "$((( $round % 2 )))" = "1" ]; then
-	    ANA_LINK_DHM_MAX=40 # maxDhmNeighs 0 vs 40
-	    resultsExtension=dhm
-	else
-	    ANA_LINK_DHM_MAX=0 # maxDhmNeighs 0 vs 40
-	    resultsExtension=rsa
-	fi
-	echo ANA_LINK_DHM_MAX=$ANA_LINK_DHM_MAX
-
-	ana_create_protos 0
-	ana_get_keys    $ANA_NODE_KEY_LEN all
-	ana_create_keys $ANA_NODE_KEY_LEN all
-
-	    if true; then
-		params="4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20"
-		params="4 6 8 10 12 14 16 18 20 22 24 26 28 30 32 34 36 38 40"
-#		params="20 25 30 35 38 40"
-		results="$(dirname $ANA_RESULTS_FILE)/$(ana_time_stamp)-ovhdVsLinks-$resultsExtension"
-		ana_create_protos 0
-		ana_create_links_owrt 0
-		ana_create_protos
-		for p in $params; do
-		    ana_create_links_owrt $p
-		    echo "$(ana_time_stamp) MEASURING to $results p=$p of $params"
-		    sleep $ANA_STABILIZE_TIME
-		    ana_measure_ovhd_owrt $results $ANA_RT_LOAD
-		done
-	    fi
-
-	if false; then
-
-	    if true; then
-		params="30 40 50 60 70 80 90 100 110 120 130 140 150 160 170 180 190 200"
-		results="$(dirname $ANA_RESULTS_FILE)/$(ana_time_stamp)-ovhdVsNodes-$resultsExtension"
-		ana_create_protos 0
-		ana_create_links_owrt
-		for p in $params; do
-		    ana_create_protos $p
-		    echo "$(ana_time_stamp) MEASURING to $results p=$p of $params"
-		    sleep $ANA_STABILIZE_TIME
-		    ana_measure_ovhd_owrt $results $ANA_RT_LOAD
-		done
-	    fi
-
-
-	    if true; then
-		params="30 20 15 10 7 5 4 3 2 1 0.7 0.5 0.4 0.3 0.2"
-#		params="7 5 4 3 2 1 0.5"
-		results="$(dirname $ANA_RESULTS_FILE)/$(ana_time_stamp)-ovhdVsUpdates-$resultsExtension"
-		ana_create_protos 0
-		ana_create_links_owrt
-		ana_create_protos
-		sleep $ANA_STABILIZE_TIME
-		for p in $params; do
-		    echo "$(ana_time_stamp) MEASURING to $results p=$p of $params"
-		    ana_measure_ovhd_owrt $results $ANA_RT_LOAD $p
-		done
-	    fi
-
-	    if true; then
-		params="-15 -10 -5 -3 -2"
-		results="$(dirname $ANA_RESULTS_FILE)/$(ana_time_stamp)-ovhdVsOwnUpdates-$resultsExtension"
-		ana_create_protos 0
-		ana_create_links_owrt
-		ana_create_protos
-		sleep $ANA_STABILIZE_TIME
-		for p in $params; do
-		    echo "$(ana_time_stamp) MEASURING to $results p=$p of $params"
-		    ana_measure_ovhd_owrt $results $ANA_RT_LOAD $p
-		done
-	    fi
-
-	    if true && [ "$ANA_LINK_DHM_MAX" = "0" ]; then
-		params="1 2 3 4 5" #1:512, 2:768, 3:896, 4:1024, 5:1536, 6:2048
-		results="$(dirname $ANA_RESULTS_FILE)/$(ana_time_stamp)-ovhdVsTxCrypt-$resultsExtension"
-		ana_create_protos 0
-		ana_create_links_owrt
-		ana_create_protos
-		for p in $params; do
-		    ana_set_protos_owrt $ANA_NODES_DEF "bmx7 -c linkRsaKey=$p"
-		    echo "$(ana_time_stamp) MEASURING to $results p=$p of $params"
-		    sleep $ANA_STABILIZE_TIME
-		    ana_measure_ovhd_owrt $results $ANA_RT_LOAD
-		done
-
-	    elif true && [ "$ANA_LINK_DHM_MAX" = "40" ]; then
-		params="16 17 18" #16:DH1024M112, 17:DH2048M112, 18:3072M112
-		results="$(dirname $ANA_RESULTS_FILE)/$(ana_time_stamp)-ovhdVsTxCrypt-$resultsExtension"
-		ana_create_protos 0
-		ana_create_links_owrt
-		ana_create_protos
-		for p in $params; do
-		    ana_set_protos_owrt $ANA_NODES_DEF "bmx7 -c linkDhmKey=$p"
-		    echo "$(ana_time_stamp) MEASURING to $results p=$p of $params"
-		    sleep $ANA_STABILIZE_TIME
-		    ana_measure_ovhd_owrt $results $ANA_RT_LOAD
-		done
-	    fi
-
-	    if true; then
-		params="1 2 3 4 5 6 7 8 " #1:512, 2:768, 3:896, 4:1024, 5:1536, 6:2048, 7:3072, 8:4096
-		results="$(dirname $ANA_RESULTS_FILE)/$(ana_time_stamp)-ovhdVsIdCrypt-$resultsExtension"
-		ana_create_links_owrt
-		for p in $params; do
-		    ana_create_protos 0
-		    ana_get_keys    $p all
-		    ana_create_keys $p all
-		    ana_create_protos $ANA_NODES_DEF $p 
-		    echo "$(ana_time_stamp) MEASURING to $results p=$p of $params"
-		    sleep $ANA_STABILIZE_TIME
-		    ana_measure_ovhd_owrt $results $ANA_RT_LOAD
-		done
-	    fi
-
-	fi
-    done
-}
-
-
-
 ana_enable_trust() {
    local nodeId=${1:-"$ANA_CPA_TRUST_NODES"}
    local id=
@@ -966,11 +997,7 @@ ana_measure_e2e_route() {
     [ "$rtt" ] && [ $rtt -le $((( 1000 * ( $ANA_PING_DEADLINE - 1)))) ] && echo $rtt || echo NA 
 }
 
-
-
-
-
-ana_init_security_scenarios() {
+ana_init_attack_scenarios() {
 
     ./mlc-init-host.sh
 
@@ -1030,7 +1057,7 @@ ana_measure_e2e_recovery() {
 }
 
 
-ana_run_security_scenarios() {
+ana_run_attack_scenarios() {
 
     local lq=${1:-$ANA_LQ}
     local penLevel=${2:-$ANA_ATTACK_PEN_LEVEL}
@@ -1057,12 +1084,12 @@ ana_all() {
     local penLevels=$((( $ANA_ATTACK_TOPO_COLS / $ANA_ATTACK_TOPO_ROLES )))
     local i=
 
-#    ana_init_security_scenarios
+#    ana_init_attack_scenarios
 
     ana_configure_grid $ANA_NODE_MAX $lq $ANA_ATTACK_TOPO_COLS
 
     for i in $(seq 0 $penLevels); do
-	echo ana_run_security_scenarios $lq $i
+	echo ana_run_attack_scenarios $lq $i
     done
 }
 
