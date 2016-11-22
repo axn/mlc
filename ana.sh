@@ -261,8 +261,10 @@ ana_create_links_owrt() {
 ana_create_keys() {
 
     local rsaLen=${1:-"$ANA_NODE_KEY_LEN"}
-    local roleColor=${2:-"all"}
-    local keysDir="$ANA_MLC_KEYS_DIR/${roleColor}-trusted-nodes"
+    local roleColor=${2:-"all-trusted-nodes"}
+    local pattern="${3:-""}"
+    local targetDir=${4:-"$ANA_NODE_TRUSTED_DIR"}
+    local keysDir="$ANA_MLC_KEYS_DIR/${roleColor}"
     local allNodes="$(seq $mlc_min_node $((($mlc_min_node - 1 + $ANA_NODES_MAX))) )"
     local nodeIds=${3:-$allNodes}
     local anaId=
@@ -272,12 +274,12 @@ ana_create_keys() {
 
 	echo $keysDir $anaId $anaIp
 	if echo "$ANA_DSTS_IP4" | grep -q "$anaId"; then
-	    $mlc_ssh root@$anaIp "rm -rf /$ANA_NODE_TRUSTED_DIR; rm -rf /tmp/$ANA_NODE_TRUSTED_DIR; mkdir -p /tmp/$ANA_NODE_TRUSTED_DIR; ln -s /tmp/$ANA_NODE_TRUSTED_DIR /$ANA_NODE_TRUSTED_DIR"
-	    scp $keysDir/*RSA* root@$anaIp:/$ANA_NODE_TRUSTED_DIR/
+	    $mlc_ssh root@$anaIp "rm -rf /$targetDir; rm -rf /tmp/$targetDir; mkdir -p /tmp/$targetDir; ln -s /tmp/$targetDir /$targetDir"
+	    scp $keysDir/*RSA* root@$anaIp:/$targetDir/
 	else
 	    local nodeName="${mlc_name_prefix}${anaId}"
-	    rm $ANA_MLC_DIR/rootfs/$nodeName/rootfs/$ANA_NODE_TRUSTED_DIR
-	    ln -s /$ANA_NODE_KEYS_DIR/${roleColor}-trusted-nodes  $ANA_MLC_DIR/rootfs/$nodeName/rootfs/$ANA_NODE_TRUSTED_DIR
+	    rm $ANA_MLC_DIR/rootfs/$nodeName/rootfs/$targetDir
+	    ln -s /$ANA_NODE_KEYS_DIR/${roleColor} $ANA_MLC_DIR/rootfs/$nodeName/rootfs/$targetDir
 	fi
 
     done
@@ -286,29 +288,35 @@ ana_create_keys() {
 ana_get_keys() {
 
     local rsaLen=${1:-"$ANA_NODE_KEY_LEN"}
-    local roleColor=${2:-"all"}
-    local keysDir="$ANA_MLC_KEYS_DIR/${roleColor}-trusted-nodes"
+    local roleColor=${2:-"all-trusted-nodes"}
+    local pattern="${3:-""}"
+    local keysDir="$ANA_MLC_KEYS_DIR/${roleColor}"
     local allNodes="$(seq $mlc_min_node $((($mlc_min_node - 1 + $ANA_NODES_MAX))) )"
-    local nodeIds=${3:-$allNodes}
+    local nodeIds=${4:-$allNodes}
     local anaId=
+
+    echo "rsaLen=$rsaLen roleColor=$roleColor pattern=$pattern keysDir=$keysDir"
 
     mkdir -p $keysDir
     rm -v $keysDir/*RSA*
 
     for anaId in $nodeIds $ANA_DSTS_IP4; do
-	local anaIp="$( echo "$ANA_DSTS_IP4" | grep -o "$anaId" || MLC_calc_ip4 $mlc_ip4_admin_prefix1 $anaId $mlc_admin_idx )"
-	local nodeVersion="$( $mlc_ssh root@$anaIp "( bmx7 -c version || bmx7 nodeRsaKey=$rsaLen /keyPath=/etc/bmx7/rsa.$rsaLen version ) | grep version=BMX" )"
-	local nodeId="$( echo "$nodeVersion" | awk -F'id=' '{print $2}' | cut -d' ' -f1 )"; nodeId=${nodeId:-"-"}
-	local nodeKey="$( echo "$nodeVersion" | awk -F'nodeKey=' '{print $2}' | cut -d' ' -f1 )"; nodeKey=${nodeKey:-"-"}
-	local nodeIp="$( echo "$nodeVersion" | awk -F'ip=' '{print $2}' | cut -d' ' -f1 )"; nodeIp=${nodeIp:-"-"}
-	local nodeName="$( echo "$nodeVersion" | awk -F'hostname=' '{print $2}' | cut -d' ' -f1 )"; nodeName=${nodeName:-"-"}
-	echo "nodeVersion=$nodeVersion nodeId=$nodeId nodeIp=$nodeIp nodeName=$nodeName"
-	touch $keysDir/$nodeId.$nodeName.$nodeKey
+	if echo "$anaId" | grep -qe "$pattern"; then
+	    local anaIp="$( echo "$ANA_DSTS_IP4" | grep -o "$anaId" || MLC_calc_ip4 $mlc_ip4_admin_prefix1 $anaId $mlc_admin_idx )"
+	    local nodeVersion="$( $mlc_ssh root@$anaIp "( bmx7 -c version || bmx7 nodeRsaKey=$rsaLen /keyPath=/etc/bmx7/rsa.$rsaLen version ) | grep version=BMX" )"
+	    local nodeId="$( echo "$nodeVersion" | awk -F'id=' '{print $2}' | cut -d' ' -f1 )"; nodeId=${nodeId:-"-"}
+	    local nodeKey="$( echo "$nodeVersion" | awk -F'nodeKey=' '{print $2}' | cut -d' ' -f1 )"; nodeKey=${nodeKey:-"-"}
+	    local nodeIp="$( echo "$nodeVersion" | awk -F'ip=' '{print $2}' | cut -d' ' -f1 )"; nodeIp=${nodeIp:-"-"}
+	    local nodeName="$( echo "$nodeVersion" | awk -F'hostname=' '{print $2}' | cut -d' ' -f1 )"; nodeName=${nodeName:-"-"}
+	    echo "nodeVersion=$nodeVersion nodeId=$nodeId nodeIp=$nodeIp nodeName=$nodeName"
+	    touch $keysDir/$nodeId.$nodeName.$nodeKey
+	fi
     done
     
     ls -l $keysDir/
 
 }
+
 
 ana_bench_tp_owrt() {
     local outFile=$1
@@ -567,8 +575,8 @@ ana_run_ovhd_scenarios() {
 
 #    ana_init_ovhd_scenarios
 #    ana_create_protos 0
-#    ana_get_keys    $ANA_NODE_KEY_LEN all
-#    ana_create_keys $ANA_NODE_KEY_LEN all
+#    ana_get_keys    $ANA_NODE_KEY_LEN
+#    ana_create_keys $ANA_NODE_KEY_LEN
 
     local params=
     local p=
@@ -588,8 +596,8 @@ ana_run_ovhd_scenarios() {
 	echo ANA_LINK_DHM_MAX=$ANA_LINK_DHM_MAX
 
 	ana_create_protos 0
-	ana_get_keys    $ANA_NODE_KEY_LEN all
-	ana_create_keys $ANA_NODE_KEY_LEN all
+	ana_get_keys    $ANA_NODE_KEY_LEN
+	ana_create_keys $ANA_NODE_KEY_LEN
 
 	if true; then
 
@@ -682,8 +690,8 @@ ana_run_ovhd_scenarios() {
 		ana_create_links_owrt
 		for p in $params; do
 		    ana_create_protos 0
-		    ana_get_keys    $p all
-		    ana_create_keys $p all
+		    ana_get_keys    $p
+		    ana_create_keys $p
 		    ana_create_protos $ANA_NODES_DEF $p 
 		    echo "$(ana_time_stamp) MEASURING to $results p=$p of $params"
 		    sleep $ANA_STABILIZE_TIME
@@ -727,23 +735,87 @@ sec_create_protos_mlc() {
 
 
 sec_create_net() {
-    mlc_net_flush
-    mlc_configure_grid 1 3 0 0 0 1 $ANA_NODE_MAX 1010 3 0 0 10 1
-    
+    local tHops=${1:-"X"}
+    local nHops=${2:-"X"}
+    local eHops=${3:-"X"}
 
+    mlc_net_flush
+    # mlc_configure_grid 1 3 0 0 0 1 $ANA_NODE_MAX 1010 3 0 0 10 1
+    mlc_configure_line 1 3 0 1019 3 0 1010 0
+    mlc_configure_line 1 3 0 1029 3 0 1020 0
+    mlc_configure_line 1 3 0 1039 3 0 1030 0
+
+    mlc_link_set 1 1010 1 1010 3 3 0
+    mlc_link_set 1 1010 1 1020 3 3 0
+    mlc_link_set 1 1010 1 1030 3 3 0
+
+    mlc_link_set 1 1020 1 1010 3 3 0
+    mlc_link_set 1 1020 1 1020 3 3 0
+    mlc_link_set 1 1020 1 1030 3 3 0
+    
+    mlc_link_set 1 1030 1 1010 3 3 0
+    mlc_link_set 1 1030 1 1020 3 3 0
+    mlc_link_set 1 1030 1 1030 3 3 0
+
+    [[ "$tHops" =~  ^[0-9]$ ]] && mlc_link_set 1 1009 1 101${tHops} 3 3 0
+    [[ "$nHops" =~  ^[0-9]$ ]] && mlc_link_set 1 1009 1 102${nHops} 3 3 0
+    [[ "$eHops" =~  ^[0-9]$ ]] && mlc_link_set 1 1009 1 103${eHops} 3 3 0
 }
+
+sec_create_trust() {
+    local aPattern=${1:-"^10[1-1][0-9]$"}
+    local bPattern=${2:-"^10[1-3][0-9]$"}
+    local cPattern=${3:-"^10[2-3][0-9]$"}
+
+    ana_get_keys $ANA_NODE_KEY_LEN a-trusted-nodes "$aPattern"
+    ana_create_keys $ANA_NODE_KEY_LEN a-trusted-nodes "$aPattern" $ANA_NODE_TRUSTED_DIR
+
+    ana_get_keys $ANA_NODE_KEY_LEN b-trusted-nodes "$bPattern"
+    ana_create_keys $ANA_NODE_KEY_LEN b-trusted-nodes "$bPattern" $ANA_NODE_TRUSTED_DIR
+
+    ana_get_keys $ANA_NODE_KEY_LEN c-trusted-nodes "$cPattern"
+    ana_create_keys $ANA_NODE_KEY_LEN c-trusted-nodes "$cPattern" $ANA_NODE_TRUSTED_DIR
+}
+
+sec_create_attacks() {
+    local aPattern=${1:-"^10[3-3][0-9]$"}
+    local bPattern=${2:-"^XXX$"}
+    local cPattern=${3:-"^10[1-1][0-9]$"}
+
+    ana_get_keys $ANA_NODE_KEY_LEN a-attacked-nodes "$aPattern"
+    ana_create_keys $ANA_NODE_KEY_LEN a-attacked-nodes "$aPattern" $ANA_NODE_ATTACKED_DIR
+
+    ana_get_keys $ANA_NODE_KEY_LEN b-attacked-nodes "$bPattern"
+    ana_create_keys $ANA_NODE_KEY_LEN b-attacked-nodes "$bPattern" $ANA_NODE_ATTACKED_DIR
+
+    ana_get_keys $ANA_NODE_KEY_LEN c-attacked-nodes "$cPattern"
+    ana_create_keys $ANA_NODE_KEY_LEN c-attacked-nodes "$cPattern" $ANA_NODE_ATTACKED_DIR
+}
+
+sec_set_trust() {
+    local pattern="${1:-""}"
+    local dir=${3:-"$ANA_NODE_TRUSTED_DIR"} 
+    local dirType=${2:-"trustedNodesDir"} 
+
+    for anaId in $nodeIds $ANA_DSTS_IP4; do
+	if echo "$anaId" | grep -qe "$pattern"; then
+	    local anaIp="$( echo "$ANA_DSTS_IP4" | grep -o "$anaId" || MLC_calc_ip4 $mlc_ip4_admin_prefix1 $anaId $mlc_admin_idx )"
+	    $mlc_ssh root@$anaIp "bmx7 -c $dirType=/$dir"
+	fi
+    done
+}
+
+
 
 sec_init_attack_scenarios() {
 
-    ./mlc-init-host.sh
-
-    ana_create_nodes
-
-    sec_create_protos_mlc 0
-    sec_create_protos_mlc
-
-    
-
+#    ./mlc-init-host.sh
+#    ana_create_nodes
+#    sec_create_protos_mlc 0
+#    sec_create_protos_mlc
+    sec_create_net 
+    sec_create_trust
+    sec_create_attacks
 
 }
 
@@ -934,6 +1006,8 @@ ana_create_role_key_dirs() {
 
     ana_create_role_dir_links $penLevel
 }
+
+
 
 ana_enable_trust() {
    local nodeId=${1:-"$ANA_CPA_TRUST_NODES"}
