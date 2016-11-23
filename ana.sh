@@ -50,7 +50,7 @@ ANA_E2E_SRC4=10.0.10.0
 ANA_PING_DEADLINE=20
 ANA_STABILIZE_TIME=120
 ANA_MEASURE_TIME=25
-ANA_MEASURE_ROUNDS=4
+ANA_MEASURE_ROUNDS=2
 ANA_MEASURE_PROBES=10 #10
 ANA_MEASURE_GAP=2
 ANA_UPD_PERIOD=4 #2
@@ -596,13 +596,14 @@ ana_run_ovhd_scenarios() {
 	echo ANA_LINK_DHM_MAX=$ANA_LINK_DHM_MAX
 
 	ana_create_protos 0
-	ana_get_keys    $ANA_NODE_KEY_LEN
-	ana_create_keys $ANA_NODE_KEY_LEN
+#	ana_get_keys    $ANA_NODE_KEY_LEN
+#	ana_create_keys $ANA_NODE_KEY_LEN
 
 	if true; then
 
 	    if true; then
 		params="30 40 50 60 70 80 90 100 110 120 130 140 150 160 170 180 190 200"
+		params="30 40 60 80 100 120 140 160 180 190 200"
 		results="$(dirname $ANA_RESULTS_FILE)/$(ana_time_stamp)-ovhdVsNodes-$resultsExtension"
 		ana_create_protos 0
 		ana_create_links_owrt
@@ -615,9 +616,8 @@ ana_run_ovhd_scenarios() {
 	    fi
 
 	    if true; then
-		params="4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20"
 		params="4 6 8 10 12 14 16 18 20 22 24 26 28 30 32 34 36 38 40"
-#		params="20 25 30 35 38 40"
+		params="4 10 15 20 25 30 35 40"
 		results="$(dirname $ANA_RESULTS_FILE)/$(ana_time_stamp)-ovhdVsLinks-$resultsExtension"
 		ana_create_protos 0
 		ana_create_links_owrt 0
@@ -632,7 +632,7 @@ ana_run_ovhd_scenarios() {
 
 	    if true; then
 		params="30 20 15 10 7 5 4 3 2 1 0.7 0.5 0.4 0.3 0.2"
-#		params="7 5 4 3 2 1 0.5"
+		params="30 20 15 10 7 5 4 3 2 1 0.7 0.6 0.5"
 		results="$(dirname $ANA_RESULTS_FILE)/$(ana_time_stamp)-ovhdVsUpdates-$resultsExtension"
 		ana_create_protos 0
 		ana_create_links_owrt
@@ -645,7 +645,7 @@ ana_run_ovhd_scenarios() {
 	    fi
 
 	    if true; then
-		params="-15 -10 -5 -3 -2"
+		params="-15 -10 -5 -3 -2 -1"
 		results="$(dirname $ANA_RESULTS_FILE)/$(ana_time_stamp)-ovhdVsOwnUpdates-$resultsExtension"
 		ana_create_protos 0
 		ana_create_links_owrt
