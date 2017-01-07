@@ -16,7 +16,7 @@ define Package/ana
   URL:=http://dev.qmp.cat/ana
   DEPENDS:=\
 	+coreutils +coreutils-timeout +coreutils-kill \
-	+iputils-ping6 +iputils-ping +iputils-tracepath +iputils-tracepath6 +iputils-traceroute6 \
+	+iputils-ping6 +iputils-ping +iputils-tracepath +iputils-tracepath6 \
 	+ip-full +ipip +iperf-mt \
 	+libpolarssl +zlib +kmod-ip6-tunnel +kmod-iptunnel6 +kmod-tun \
 	+iw +wireless-tools +libiwinfo \
@@ -26,6 +26,7 @@ define Package/ana
 # and deselect if needed: odhcpc ppp wpad-mini hostapd 
 #  +less  +iwinfo
 #       +netcat
+#   	+iputils-traceroute6
 #       +mtr +netperf 
 #	+@BUSYBOX_CONFIG_KILLALL5
 
