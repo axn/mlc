@@ -9,11 +9,13 @@ ANA_MLC_DIR="/home/neumann/mlc-public.git"
 ANA_SSH="$mlc_ssh -i /home/neumann/.ssh/id_rsa "
 ANA_OWRT_DIR="/home/neumann/openwrt/openwrt-15.05.git"
 ANA_RESULTS_FILE_PREFIX="results-01"
+ANA_NODE_DB_FILE="ana-nodes-db"
 ANA_PROT_DIR="/usr/src/bmx7.git"
 ANA_NODE_TRUSTED_DIR="etc/bmx7/trustedNodes"
 ANA_NODE_ATTACKED_DIR="etc/bmx7/attackedNodes"
 ANA_NODE_ALLKEYS_DIR="etc/bmx7/allNodes"
 ANA_NODE_KEYS_DIR="usr/src/bmxKeys"
+ANA_MAKE_ARGS="'-pg -DPROFILING -DCORE_LIMIT=20000 -DTRAFFIC_DUMP -DCRYPTLIB=POLARSSL_1_3_3'"
 
 
 ANA_LINK_RSA_LEN=3 # 3:896
@@ -101,7 +103,6 @@ ANA_MAIN_OPTS="linkKeyLifetime=0 linkRsaKey=$ANA_LINK_RSA_LEN linkDhmKey=$ANA_LI
 ################################
 
 ANA_NODES_DEF=100 # 100
-ANA_NODES_MIN=10
 
 ANA_LINKS_DEF=4
 ANA_LINKS_MIN=1
@@ -134,7 +135,7 @@ ana_time_stamp() {
 
 ana_update_mlc() {
     ssh root@mlc "cd $ANA_PROT_DIR && \
-	make clean_all build_all install_all EXTRA_CFLAGS='-pg -DPROFILING -DCORE_LIMIT=20000 -DTRAFFIC_DUMP -DCRYPTLIB=POLARSSL_1_3_3'"
+	make clean_all build_all install_all EXTRA_CFLAGS=$ANA_MAKE_ARGS"
 }
 
 
@@ -258,41 +259,13 @@ ana_create_links_owrt() {
 }
 
 
-ana_create_keys() {
-
-    local rsaLen=${1:-"$ANA_NODE_KEY_LEN"}
-    local roleColor=${2:-"all-trusted-nodes"}
-    local pattern="${3:-""}"
-    local targetDir=${4:-"$ANA_NODE_TRUSTED_DIR"}
-    local keysDir="$ANA_MLC_KEYS_DIR/${roleColor}"
-    local allNodes="$(seq $mlc_min_node $((($mlc_min_node - 1 + $ANA_NODES_MAX))) )"
-    local nodeIds=${3:-$allNodes}
-    local anaId=
-
-    for anaId in $nodeIds $ANA_DSTS_IP4; do
-	local anaIp="$( echo "$ANA_DSTS_IP4" | grep -o "$anaId" || MLC_calc_ip4 $mlc_ip4_admin_prefix1 $anaId $mlc_admin_idx )"
-
-	echo $keysDir $anaId $anaIp
-	if echo "$ANA_DSTS_IP4" | grep -q "$anaId"; then
-	    $mlc_ssh root@$anaIp "rm -rf /$targetDir; rm -rf /tmp/$targetDir; mkdir -p /tmp/$targetDir; ln -s /tmp/$targetDir /$targetDir"
-	    scp $keysDir/*RSA* root@$anaIp:/$targetDir/
-	else
-	    local nodeName="${mlc_name_prefix}${anaId}"
-	    rm $ANA_MLC_DIR/rootfs/$nodeName/rootfs/$targetDir
-	    ln -s /$ANA_NODE_KEYS_DIR/${roleColor} $ANA_MLC_DIR/rootfs/$nodeName/rootfs/$targetDir
-	fi
-
-    done
-}
-
 ana_get_keys() {
 
     local rsaLen=${1:-"$ANA_NODE_KEY_LEN"}
     local roleColor=${2:-"all-trusted-nodes"}
     local pattern="${3:-""}"
     local keysDir="$ANA_MLC_KEYS_DIR/${roleColor}"
-    local allNodes="$(seq $mlc_min_node $((($mlc_min_node - 1 + $ANA_NODES_MAX))) )"
-    local nodeIds=${4:-$allNodes}
+    local allNodes="$(seq $mlc_min_node $((($mlc_min_node - 1 + $ANA_NODES_MAX))) )  $ANA_DSTS_IP4"
     local anaId=
 
     echo "rsaLen=$rsaLen roleColor=$roleColor pattern=$pattern keysDir=$keysDir"
@@ -300,7 +273,7 @@ ana_get_keys() {
     mkdir -p $keysDir
     rm -v $keysDir/*RSA*
 
-    for anaId in $nodeIds $ANA_DSTS_IP4; do
+    for anaId in $allNodes; do
 	if echo "$anaId" | grep -qe "$pattern"; then
 	    local anaIp="$( echo "$ANA_DSTS_IP4" | grep -o "$anaId" || MLC_calc_ip4 $mlc_ip4_admin_prefix1 $anaId $mlc_admin_idx )"
 	    local nodeVersion="$( $mlc_ssh root@$anaIp "( bmx7 -c version || bmx7 nodeRsaKey=$rsaLen /keyPath=/etc/bmx7/rsa.$rsaLen version ) | grep version=BMX" )"
@@ -317,6 +290,34 @@ ana_get_keys() {
 
 }
 
+ana_create_keys() {
+
+    local roleColor=${1:-"all-trusted-nodes"}
+    local pattern="${2:-""}"
+    local targetDir=${3:-"$ANA_NODE_TRUSTED_DIR"}
+    local keysDir="/$ANA_NODE_KEYS_DIR/${roleColor}"
+    local allNodes="$(seq $mlc_min_node $((($mlc_min_node - 1 + $ANA_NODES_MAX))) )  $ANA_DSTS_IP4"
+    local anaId=
+
+    for anaId in $allNodes; do
+	echo "A: $keysDir $anaId"
+	
+	if echo "$anaId" | grep -qe "$pattern"; then
+	    
+	    local anaIp="$( echo "$ANA_DSTS_IP4" | grep -o "$anaId" || MLC_calc_ip4 $mlc_ip4_admin_prefix1 $anaId $mlc_admin_idx )"
+
+	    echo "B: $keysDir $anaId $anaIp"
+	    if echo "$ANA_DSTS_IP4" | grep -q "$anaId"; then
+		$mlc_ssh root@$anaIp "rm -rf /$targetDir; rm -rf /tmp/$targetDir; mkdir -p /tmp/$targetDir; ln -s /tmp/$targetDir /$targetDir"
+		scp $keysDir/*RSA* root@$anaIp:/$targetDir/
+	    else
+		local nodeName="${mlc_name_prefix}${anaId}"
+		rm -rf $ANA_MLC_DIR/rootfs/$nodeName/rootfs/$targetDir
+		ln -s $keysDir $ANA_MLC_DIR/rootfs/$nodeName/rootfs/$targetDir
+	    fi
+	fi
+    done
+}
 
 ana_bench_tp_owrt() {
     local outFile=$1
@@ -326,7 +327,7 @@ ana_bench_tp_owrt() {
     echo "$(ana_time_stamp) tp init to $dst"
     local dst6=$( $ANA_SSH root@$ANA_E2E_SRC4 "bmx7 -c list=originators"  | grep "name=$dst" | awk -F'primaryIp=' '{print $2}' | cut -d' ' -f1 )
 
-   $ANA_SSH root@$ANA_E2E_SRC4 "traceroute6 -n $dst6"
+    $ANA_SSH root@$ANA_E2E_SRC4 "traceroute6 -n $dst6"
 
     local ping=$( $ANA_SSH root@$ANA_E2E_SRC4 "ping6 -nc2 $dst6" | head -n3 | tail -n1 )
     local ttl=$( echo $ping | awk -F'ttl=' '{print $2}' | cut -d' ' -f1 )
@@ -346,7 +347,7 @@ ana_bench_top_owrt() {
     local dst4=${4:-$ANA_DST1_IP4}
 
     echo "$(ana_time_stamp) ana_bench_top_owrt init"
-    ssh root@$dst4 "sleep $delay; top -b -n2 -d $duration" > $outFile.tmp
+    $ANA_SSH root@$dst4 "sleep $delay; top -b -n2 -d $duration" > $outFile.tmp
     local mem=$(cat $outFile.tmp | grep "$ANA_PROTO_CMD" | grep -v "grep" | tail -n1 | awk '{print $5}')
     local cpu=$(cat $outFile.tmp | grep "$ANA_PROTO_CMD" | grep -v "grep" | tail -n1 | awk '{print $7}'| cut -d'%' -f1)
     local idl=$(cat $outFile.tmp | grep "CPU:" | grep -v "grep" | tail -n1 | awk '{print $8}'| cut -d'%' -f1)
@@ -361,11 +362,10 @@ ana_bench_top_sys() {
     local duration=${2:-$ANA_MEASURE_TIME}
     local delay=${3:-$ANA_PROBE_DELAY_TIME}
 
-
     echo "$(ana_time_stamp) ana_bench_top_sys init"
     sleep $delay
     echo "$(ana_time_stamp) ana_bench_top_sys begin"
-    top -b -n2 -d $duration > $outFile.tmp
+    top -b -n2 -d $duration -c > $outFile.tmp
     local idl=$(cat $outFile.tmp | grep "^%Cpu" | grep -v "grep" | tail -n1 | awk '{print $8}')
     local mem=$(cat $outFile.tmp | grep "^KiB Mem" | grep -v "grep" | tail -n1 | awk '{print $7}')
     
@@ -402,8 +402,8 @@ ana_bmx_stat_owrt() {
     local outFile2=$2
     
     echo "$(ana_time_stamp) ana_bmx_stat_owrt begin"
-    ssh root@$ANA_DST1_IP4 "bmx7 -c list=status" > $outFile1
-    ssh root@$ANA_DST1_IP4 "bmx7 -c list=links"  > $outFile2
+    $ANA_SSH root@$ANA_DST1_IP4 "bmx7 -c list=status" > $outFile1
+    $ANA_SSH root@$ANA_DST1_IP4 "bmx7 -c list=links"  > $outFile2
     echo "$(ana_time_stamp) ana_bmx_stat_owrt end"
 }
 
@@ -444,48 +444,15 @@ ana_create_descUpdates_mlc() {
 }
 
 
-ana_measure_ovhd_owrt() {
-
-    local resultsFile=${1:-$ANA_RESULTS_FILE}
-    local rtLoad=${2:-$ANA_RT_LOAD}
-    local updPeriod=${3:-$ANA_UPD_PERIOD}
-    local duration=${4:-$ANA_MEASURE_TIME}
-    local probes=${5:-$ANA_MEASURE_PROBES}
-    local probe=
-
-    local start=$(ana_time_stamp)
-    mkdir -p $(dirname $resultsFile)
-
-    rm -rf /tmp/ana.tmp.*
-    local tmpDir=$(mktemp -d /tmp/ana.tmp.XXXXXXXXXX)
-
-    local longDuration=$((( (($duration + $ANA_PROBE_SAFE_TIME) * 2 * $probes) + $ANA_MEASURE_GAP  )))
-    ana_create_descUpdates_mlc $tmpDir $longDuration $updPeriod <<< /dev/zero &
-
-    sleep $ANA_MEASURE_GAP
-
-    for probe in $(seq 1 $probes); do
-
-	true && (
-	    echo "$(ana_time_stamp) bench started"
-
-	    ana_bench_top_owrt $tmpDir/topOI.out $duration 0 &
-	    ana_bench_tcp_owrt $tmpDir/tcpOI.out $duration 0 &
-	    ana_bench_top_sys  $tmpDir/topSI.out $duration 0 &
-	    ana_bmx_stat_owrt  $tmpDir/bmxOI.out $tmpDir/bmlOI.out &
-	    wait
-
-	    local links="$(   cat $tmpDir/bmxOI.out | awk -F'nbs=' '{print $2}' | cut -d' ' -f1 )"
-
-	    [ "$rtLoad" != "0" ] && [ $links -ge 3 ] && (
-		ana_bench_tp_owrt  $tmpDir/tpOL.out  $((($duration + $ANA_RT_RAISE_TIME))) &
-		ana_bench_tcp_owrt $tmpDir/tcpOL.out $duration $ANA_PROBE_DELAY_TIME &
-		ana_bench_top_sys  $tmpDir/topSL.out $duration $ANA_PROBE_DELAY_TIME &
-		wait
-	    )
-	    echo "$(ana_time_stamp) bench finished"
-	)
-
+ana_summarize() {
+    local tmpDir=$1
+    local resultsFile=$2
+    local ana_time_stamp=$3
+    local updPeriod=$4
+    local duration=$5
+    local start=$6
+    local probe=$7
+    
 	echo "$(ana_time_stamp) summarizing probe=$probe results from $tmpDir"
 
 	local links="$(   cat $tmpDir/bmxOI.out | awk -F'nbs=' '{print $2}' | cut -d' ' -f1 )"
@@ -536,7 +503,51 @@ ana_measure_ovhd_owrt() {
 	    ${txPI:-"NA"} ${txPL:-"NA"} ${txBI:-"NA"} ${txBL:-"NA"} ${rxPI:-"NA"} ${rxPL:-"NA"} ${rxBI:-"NA"} ${rxBL:-"NA"} \
 	    ${uptime:-"NA"} ${lstDsc:-"NA"} \
 	    | tee -a $resultsFile
+}
 
+ana_measure_ovhd_owrt() {
+
+    local resultsFile=${1:-$ANA_RESULTS_FILE}
+    local rtLoad=${2:-$ANA_RT_LOAD}
+    local updPeriod=${3:-$ANA_UPD_PERIOD}
+    local duration=${4:-$ANA_MEASURE_TIME}
+    local probes=${5:-$ANA_MEASURE_PROBES}
+    local probe=
+
+    local start=$(ana_time_stamp)
+    mkdir -p $(dirname $resultsFile)
+
+    rm -rf /tmp/ana.tmp.*
+    local tmpDir=$(mktemp -d /tmp/ana.tmp.XXXXXXXXXX)
+
+    if [ "$updPeriod" != "0" ]; then
+	local longDuration=$((( (($duration + $ANA_PROBE_SAFE_TIME) * 2 * $probes) + $ANA_MEASURE_GAP  )))
+	ana_create_descUpdates_mlc $tmpDir $longDuration $updPeriod <<< /dev/zero
+    fi
+
+    sleep $ANA_MEASURE_GAP
+
+    for probe in $(seq 1 $probes); do
+
+	true && (
+	    echo "$(ana_time_stamp) bench started"
+
+#	    ana_bench_top_owrt $tmpDir/topOI.out $duration 0 &
+#	    ana_bench_tcp_owrt $tmpDir/tcpOI.out $duration 0 &
+	    ana_bench_top_sys  $tmpDir/topSI.out $duration 0 &
+	    ana_bmx_stat_owrt  $tmpDir/bmxOI.out $tmpDir/bmlOI.out &
+	    wait
+
+	    [ "$rtLoad" != "0" ] && (
+		ana_bench_tp_owrt  $tmpDir/tpOL.out  $((($duration + $ANA_RT_RAISE_TIME))) &
+		ana_bench_tcp_owrt $tmpDir/tcpOL.out $duration $ANA_PROBE_DELAY_TIME &
+		ana_bench_top_sys  $tmpDir/topSL.out $duration $ANA_PROBE_DELAY_TIME &
+		wait
+	    )
+	    echo "$(ana_time_stamp) bench finished"
+	)
+
+	ana_summarize $tmpDir $resultsFile $ana_time_stamp $updPeriod $duration $start $probe
     done
 
     rm -r $tmpDir
@@ -574,9 +585,9 @@ ana_set_protos_owrt() {
 ana_run_ovhd_scenarios() {
 
 #    ana_init_ovhd_scenarios
-#    ana_create_protos 0
-#    ana_get_keys    $ANA_NODE_KEY_LEN
-#    ana_create_keys $ANA_NODE_KEY_LEN
+    ana_create_protos 0
+    ana_get_keys    $ANA_NODE_KEY_LEN
+    ana_create_keys
 
     local params=
     local p=
@@ -597,7 +608,7 @@ ana_run_ovhd_scenarios() {
 
 	ana_create_protos 0
 #	ana_get_keys    $ANA_NODE_KEY_LEN
-#	ana_create_keys $ANA_NODE_KEY_LEN
+#	ana_create_keys
 
 	if true; then
 
@@ -691,7 +702,7 @@ ana_run_ovhd_scenarios() {
 		for p in $params; do
 		    ana_create_protos 0
 		    ana_get_keys    $p
-		    ana_create_keys $p
+		    ana_create_keys
 		    ana_create_protos $ANA_NODES_DEF $p 
 		    echo "$(ana_time_stamp) MEASURING to $results p=$p of $params"
 		    sleep $ANA_STABILIZE_TIME
@@ -711,7 +722,7 @@ sec_create_protos_mlc() {
     local nodes=${1:-$ANA_NODES_DEF}
 
     local ANA_MLC_CMD="rm -rf /root/bmx7/*; mkdir -p /root/bmx7; cd /root/bmx7; ulimit -c 20000; \
-   $ANA_PROTO_CMD plugin=bmx7_evil.so nodeRsaKey=$ANA_NODE_KEY_LEN /keyPath=/etc/bmx7/rsa.$ANA_NODE_KEY_LEN $ANA_MAIN_OPTS maxDhmNeighs=$ANA_LINK_DHM_MAX $ANA_MLC_DEVS \
+   $ANA_PROTO_CMD plugin=bmx7_evil.so nodeRsaKey=$ANA_NODE_KEY_LEN /keyPath=/etc/bmx7/rsa.$ANA_NODE_KEY_LEN $ANA_MAIN_OPTS maxDhmNeighs=$ANA_LINK_DHM_MAX $ANA_MLC_DEVS txBucketDrain=100  \
    > /root/bmx7/bmx7.log 2>&1 &"
 
     if [ "$nodes" = "0" ]; then
@@ -725,101 +736,374 @@ sec_create_protos_mlc() {
 # ANA_PROTO_RM:
 	rm -f $ANA_MLC_DIR/rootfs/mlc*/rootfs/etc/config/bmx7
 
-	local bmxPs=$(ps aux | grep "$ANA_PROTO_CMD" | grep -v grep | wc -l)
+#	local bmxPs=$(ps aux | grep "$ANA_PROTO_CMD" | grep -v grep | wc -l)
 
-	[ $nodes -gt $bmxPs ] && \
-	    mlc_loop -li $(((1000 + $bmxPs ))) -a $((( 1000 + $nodes - 1))) -e "$ANA_MLC_CMD"
-
+#	[ $nodes -gt $bmxPs ] && \
+#	    mlc_loop -li $(((1000 + $bmxPs ))) -a $((( 1000 + $nodes - 1))) -e "$ANA_MLC_CMD"
+	mlc_loop -li $((( 1000 ))) -a $((( 1000 + $nodes - 1))) -e "$ANA_MLC_CMD"
     fi
 }
 
 
 sec_create_net() {
-    local tHops=${1:-"X"}
-    local nHops=${2:-"X"}
-    local eHops=${3:-"X"}
+    local aHops=${1:-"X"}
+    local bHops=${2:-"X"}
+    local cHops=${3:-"X"}
+    local lq=${4:-"3"}
 
     mlc_net_flush
-    # mlc_configure_grid 1 3 0 0 0 1 $ANA_NODE_MAX 1010 3 0 0 10 1
-    mlc_configure_line 1 3 0 1019 3 0 1010 0
-    mlc_configure_line 1 3 0 1029 3 0 1020 0
-    mlc_configure_line 1 3 0 1039 3 0 1030 0
+    # mlc_configure_grid 1 $lq 0 0 0 1 $ANA_NODE_MAX 1010 $lq 0 0 10 1
+    mlc_configure_line 1 $lq 0 1008 $lq 0 1001 0
+    mlc_configure_line 1 $lq 0 1018 $lq 0 1011 0
+    mlc_configure_line 1 $lq 0 1028 $lq 0 1021 0
 
-    mlc_link_set 1 1010 1 1010 3 3 0
-    mlc_link_set 1 1010 1 1020 3 3 0
-    mlc_link_set 1 1010 1 1030 3 3 0
+    mlc_link_set 1 1000 1 1001 $lq $lq 0
+    mlc_link_set 1 1000 1 1011 $lq $lq 0
+    mlc_link_set 1 1000 1 1021 $lq $lq 0
 
-    mlc_link_set 1 1020 1 1010 3 3 0
-    mlc_link_set 1 1020 1 1020 3 3 0
-    mlc_link_set 1 1020 1 1030 3 3 0
-    
-    mlc_link_set 1 1030 1 1010 3 3 0
-    mlc_link_set 1 1030 1 1020 3 3 0
-    mlc_link_set 1 1030 1 1030 3 3 0
+    mlc_link_set 1 1010 1 1001 $lq $lq 0
+    mlc_link_set 1 1010 1 1011 $lq $lq 0
+    mlc_link_set 1 1010 1 1021 $lq $lq 0
 
-    [[ "$tHops" =~  ^[0-9]$ ]] && mlc_link_set 1 1009 1 101${tHops} 3 3 0
-    [[ "$nHops" =~  ^[0-9]$ ]] && mlc_link_set 1 1009 1 102${nHops} 3 3 0
-    [[ "$eHops" =~  ^[0-9]$ ]] && mlc_link_set 1 1009 1 103${eHops} 3 3 0
-}
+    mlc_link_set 1 1020 1 1001 $lq $lq 0
+    mlc_link_set 1 1020 1 1011 $lq $lq 0
+    mlc_link_set 1 1020 1 1021 $lq $lq 0
 
-sec_create_trust() {
-    local aPattern=${1:-"^10[1-1][0-9]$"}
-    local bPattern=${2:-"^10[1-3][0-9]$"}
-    local cPattern=${3:-"^10[2-3][0-9]$"}
 
-    ana_get_keys $ANA_NODE_KEY_LEN a-trusted-nodes "$aPattern"
-    ana_create_keys $ANA_NODE_KEY_LEN a-trusted-nodes "$aPattern" $ANA_NODE_TRUSTED_DIR
+    [[ "$aHops" =~  ^[0-8]$ ]] && mlc_link_set 1 1009 1 100${aHops} $lq $lq 0
+    [[ "$bHops" =~  ^[0-8]$ ]] && mlc_link_set 1 1009 1 101${bHops} $lq $lq 0
+    [[ "$cHops" =~  ^[0-8]$ ]] && mlc_link_set 1 1009 1 102${cHops} $lq $lq 0
 
-    ana_get_keys $ANA_NODE_KEY_LEN b-trusted-nodes "$bPattern"
-    ana_create_keys $ANA_NODE_KEY_LEN b-trusted-nodes "$bPattern" $ANA_NODE_TRUSTED_DIR
+    [[ "$aHops" =~  ^[0-8]$ ]] && mlc_link_set 1 1019 1 100${aHops} $lq $lq 0
+    [[ "$bHops" =~  ^[0-8]$ ]] && mlc_link_set 1 1019 1 101${bHops} $lq $lq 0
+    [[ "$cHops" =~  ^[0-8]$ ]] && mlc_link_set 1 1019 1 102${cHops} $lq $lq 0
 
-    ana_get_keys $ANA_NODE_KEY_LEN c-trusted-nodes "$cPattern"
-    ana_create_keys $ANA_NODE_KEY_LEN c-trusted-nodes "$cPattern" $ANA_NODE_TRUSTED_DIR
-}
-
-sec_create_attacks() {
-    local aPattern=${1:-"^10[3-3][0-9]$"}
-    local bPattern=${2:-"^XXX$"}
-    local cPattern=${3:-"^10[1-1][0-9]$"}
-
-    ana_get_keys $ANA_NODE_KEY_LEN a-attacked-nodes "$aPattern"
-    ana_create_keys $ANA_NODE_KEY_LEN a-attacked-nodes "$aPattern" $ANA_NODE_ATTACKED_DIR
-
-    ana_get_keys $ANA_NODE_KEY_LEN b-attacked-nodes "$bPattern"
-    ana_create_keys $ANA_NODE_KEY_LEN b-attacked-nodes "$bPattern" $ANA_NODE_ATTACKED_DIR
-
-    ana_get_keys $ANA_NODE_KEY_LEN c-attacked-nodes "$cPattern"
-    ana_create_keys $ANA_NODE_KEY_LEN c-attacked-nodes "$cPattern" $ANA_NODE_ATTACKED_DIR
+    [[ "$aHops" =~  ^[0-8]$ ]] && mlc_link_set 1 1029 1 100${aHops} $lq $lq 0
+    [[ "$bHops" =~  ^[0-8]$ ]] && mlc_link_set 1 1029 1 101${bHops} $lq $lq 0
+    [[ "$cHops" =~  ^[0-8]$ ]] && mlc_link_set 1 1029 1 102${cHops} $lq $lq 0
 }
 
 sec_set_trust() {
     local pattern="${1:-""}"
-    local dir=${3:-"$ANA_NODE_TRUSTED_DIR"} 
-    local dirType=${2:-"trustedNodesDir"} 
+    local dir=${2:-"/$ANA_NODE_TRUSTED_DIR"} 
+    local dirType=${3:-"trustedNodesDir"} 
+    local allNodes="$(seq $mlc_min_node $((($mlc_min_node - 1 + $ANA_NODES_MAX))) )  $ANA_DSTS_IP4"
 
-    for anaId in $nodeIds $ANA_DSTS_IP4; do
+    for anaId in $allNodes; do
 	if echo "$anaId" | grep -qe "$pattern"; then
 	    local anaIp="$( echo "$ANA_DSTS_IP4" | grep -o "$anaId" || MLC_calc_ip4 $mlc_ip4_admin_prefix1 $anaId $mlc_admin_idx )"
-	    $mlc_ssh root@$anaIp "bmx7 -c $dirType=/$dir"
+	    echo ssh root@$anaIp "bmx7 -c $dirType=$dir"
+	    $mlc_ssh root@$anaIp "bmx7 -c $dirType=$dir"
 	fi
     done
 }
 
+sec_get_keys() {
 
+    local roleColor=${1:-"all-trusted-nodes"}
+    local pattern="${2:-""}"
+    local keysDir="$ANA_MLC_KEYS_DIR/${roleColor}"
+    local allNodes="$(seq $mlc_min_node $((($mlc_min_node - 1 + $ANA_NODES_MAX))) )  $ANA_DSTS_IP4"
+    local anaId=
 
-sec_init_attack_scenarios() {
+    echo "roleColor=$roleColor pattern=$pattern keysDir=$keysDir"
 
-#    ./mlc-init-host.sh
-#    ana_create_nodes
-#    sec_create_protos_mlc 0
-#    sec_create_protos_mlc
-    sec_create_net 
-    sec_create_trust
-    sec_create_attacks
+    mkdir -p $keysDir
+    rm -v $keysDir/*RSA*
+
+    for anaId in $allNodes; do
+	if echo "$anaId" | grep -qe "$pattern"; then
+	    local anaIp="$( echo "$ANA_DSTS_IP4" | grep -o "$anaId" || MLC_calc_ip4 $mlc_ip4_admin_prefix1 $anaId $mlc_admin_idx )"
+
+	    
+	    local nodeId="$(   sec_get_dbItem $anaIp id   mlcIp )"; nodeId=${nodeId:-"-"}
+	    local nodeKey="$(  sec_get_dbItem $anaIp rsa  mlcIp )"; nodeKey=${nodeKey:-"-"}
+	    local nodeName="$( sec_get_dbItem $anaIp name mlcIp )"; nodeName=${nodeName:-"-"}
+
+	    echo "nodeId=$nodeId  nodeName=$nodeName nodeKey=$nodeKey"
+	    touch $keysDir/$nodeId.$nodeName.$nodeKey
+	fi
+    done
+    
+    ls -l $keysDir/
 
 }
 
 
+sec_prepare_trust() {
+
+    local APattern=${1:-"^10[0-0][0-9]$"} # trusteds
+    local aPattern=${2:-"^100[0,9]$"}     # trustees
+
+    local BPattern=${3:-"^10[0-2][0-9]$"}
+    local bPattern=${4:-"^101[0,9]$"}
+
+    local CPattern=${5:-"^10[1-2][0-9]$"}
+    local cPattern=${6:-"^102[0,9]$"}
+
+    local ZPattern=${7:-"^XXX$"}
+    local zPattern=${7:-"^10[0-2][1-8]$"}
+
+
+    sec_set_trust "" "-" "trustedNodesDir"
+#   sec_set_trust "" "/$ANA_NODE_TRUSTED_DIR" "trustedNodesDir"
+
+    sec_get_keys z-trusted-nodes "$ZPattern"
+    ana_create_keys  z-trusted-nodes "$zPattern" $ANA_NODE_TRUSTED_DIR
+
+    sec_get_keys a-trusted-nodes "$APattern"
+    ana_create_keys  a-trusted-nodes "$aPattern" $ANA_NODE_TRUSTED_DIR
+
+    sec_get_keys b-trusted-nodes "$BPattern"
+    ana_create_keys  b-trusted-nodes "$bPattern" $ANA_NODE_TRUSTED_DIR
+
+    sec_get_keys c-trusted-nodes "$CPattern"
+    ana_create_keys  c-trusted-nodes "$cPattern" $ANA_NODE_TRUSTED_DIR
+
+}
+
+sec_prepare_attacks() {
+
+    local APattern=${1:-"^1020$"} # attackeds
+    local aPattern=${2:-"^10[0-0][0-9]$"} # attacker
+
+    local BPattern=${3:-"^XXX$"}
+    local bPattern=${4:-"^10[1-1][0-9]$"}
+
+    local CPattern=${5:-"^1000$"}
+    local cPattern=${6:-"^10[2-2][0-9]$"}
+
+#   sec_set_trust "" "-" "attackedNodesDir"
+    sec_set_trust "" "/$ANA_NODE_ATTACKED_DIR" "attackedNodesDir"
+
+    sec_get_keys a-attacked-nodes "$APattern"
+    ana_create_keys  a-attacked-nodes "$aPattern" $ANA_NODE_ATTACKED_DIR
+    sec_set_trust "$aPattern" 1 evilRouteDropping
+    sec_set_trust "$aPattern" 1 evilDescDropping
+#   sec_set_trust "$aPattern" 1 evilOgmDropping
+#   sec_set_trust "$aPattern" 1 evilOgmMetrics
+
+    sec_get_keys b-attacked-nodes "$BPattern"
+    ana_create_keys  b-attacked-nodes "$bPattern" $ANA_NODE_ATTACKED_DIR
+    sec_set_trust "$bPattern" 0 evilRouteDropping
+    sec_set_trust "$bPattern" 0 evilDescDropping
+
+    sec_get_keys c-attacked-nodes "$CPattern"
+    ana_create_keys  c-attacked-nodes "$cPattern" $ANA_NODE_ATTACKED_DIR
+    sec_set_trust "$cPattern" 1 evilRouteDropping
+    sec_set_trust "$cPattern" 1 evilDescDropping
+}
+
+
+sec_get_nodeDb() {
+
+    local dbFile=${1:-"$ANA_NODE_DB_FILE"}
+    local allNodes="$(seq $mlc_min_node $((($mlc_min_node - 1 + $ANA_NODES_MAX))) )  $ANA_DSTS_IP4"
+    local anaId=
+
+    echo updating dbFile=$dbFile
+
+    rm -fv $dbFile
+
+    for anaId in $allNodes; do
+
+	local anaIp="$( echo "$ANA_DSTS_IP4" | grep -o "$anaId" || MLC_calc_ip4 $mlc_ip4_admin_prefix1 $anaId $mlc_admin_idx )"
+	local nodeVersion="$( $mlc_ssh root@$anaIp "bmx7 -c version list=interfaces | grep -e version=BMX -e dev= | head -n2; ip a show dev eth0 | grep 'inet 10.0.' " )"
+	local nodeId="$( echo "$nodeVersion" | awk -F'id=' '{print $2}' | cut -d' ' -f1 )"; nodeId=${nodeId:-"-"}
+	local nodeKey="$( echo "$nodeVersion" | awk -F'nodeKey=' '{print $2}' | cut -d' ' -f1 )"; nodeKey=${nodeKey:-"-"}
+	local nodeIp="$( echo "$nodeVersion" | awk -F'ip=' '{print $2}' | cut -d' ' -f1 )"; nodeIp=${nodeIp:-"-"}
+	local nodeName="$( echo "$nodeVersion" | awk -F'hostname=' '{print $2}' | cut -d' ' -f1 )"; nodeName=${nodeName:-"-"}
+	local nodeMac="$( echo "$nodeVersion" | grep dev= | awk -F'localMac=' '{print $2}' | cut -d' ' -f1 )"; nodeMac=${nodeMac:-"-"}
+	local nodeDev="$( echo "$nodeVersion" | grep dev= | awk -F'dev=' '{print $2}' | cut -d' ' -f1 )"; nodeDev=${nodeDev:-"-"}
+	local mlcIp="$( echo "$nodeVersion" | grep inet | awk '{print $2}' | cut -d'/' -f1 )"; mlcIp=${mlcIp:-"-"}
+	echo "nodeVersion=$nodeVersion:"
+	echo "id=$nodeId ip6=$nodeIp name=$nodeName rsa=$nodeKey dev=$nodeDev mac=$nodeMac mlcIp=$mlcIp" | tee -a $dbFile
+    done
+    
+}
+
+sec_get_dbItem() {
+
+    local pattern="${1:-""}"
+    local outField=${2:-"ip6"}
+    local inField=${3:-"name"}
+    local dbFile=${4:-"$ANA_NODE_DB_FILE"}
+
+    local nodeInfo="$(grep -e "${inField}=${pattern}"  $dbFile)"
+
+#   echo "nodeInfo=$nodeInfo"
+    
+    if [ -z "$nodeInfo" ]; then
+	return 1
+    else
+	echo "$nodeInfo" | awk -F"$outField=" '{print $2}' | cut -d' ' -f1
+    fi
+
+}
+
+sec_tcpdump() {
+    local outFile=$1
+    local duration=${2:-$ANA_MEASURE_TIME}
+    local delay=${3:-$ANA_PROBE_DELAY_TIME}
+    local opts="$4"
+
+    echo "sec_tcpdump $$"
+
+    sleep $delay
+    echo timeout $duration tcpdump -nve -i $mlc_bridge_prefix$ANA_MBR -s 200 $( [ "$opts" ] && echo "$opts" )  > $outFile 2>&1
+    tcpdump -nvvve -i $mlc_bridge_prefix$ANA_MBR -s 200 -w $outFile $( [ "$opts" ] && echo "$opts" )
+#    tshard -a duration:$duration -i $mlc_bridge_prefix$ANA_MBR -s 200 -w $outFile
+}
+
+
+sec_tcpdump_filter() {
+    local inFile=${1:-"/tmp/test"}
+    local patterns=${2:-"mlc1000"}
+    local grepCond=${3:-"v"}
+    local outField=${4:-"mac"}
+    local inField=${5:-"name"}
+    local dbFile=${6:-"$ANA_NODE_DB_FILE"}
+
+    local inData="$(tcpdump -r $inFile -nevv -ttttt 2>/dev/null | grep icmp6)"
+
+    echo "Filter $grepCond results inFile=$inFile patterns=$patterns :"
+
+    for p in $patterns; do
+	inData="$(echo "$inData" | grep -$grepCond " > $(sec_get_dbItem $p $outField $inField)")"
+    done
+    echo "$inData"
+}
+
+sec_tcpdump_translate() {
+    local inFile=${1:-"/tmp/test"}
+    local patterns=${2:-"mlc"}
+    local inField=${4:-"mac"}
+    local outField=${5:-"name"}
+    local dbFile=${6:-"$ANA_NODE_DB_FILE"}
+
+    local inData="$(cat $inFile)"
+
+    for n in $(sec_get_dbItem mlc name name); do
+	local m=$(sec_get_dbItem $n $inField $outField)
+	inData=$(echo "$inData" | sed s/"$m"/"$n"/)
+    done
+    echo "$inData"
+}
+
+sec_ping_e2e() {
+
+    local outFile=${1:-"/tmp/ana.trace"}
+    local duration=${2:-$ANA_MEASURE_TIME}
+    local srcMlcId=${3:-"1009"}
+    local dstMlcId=${4:-"1000"}
+    
+    local srcMlcIp=$(sec_get_dbItem "mlc${srcMlcId}" "mlcIp" "name")
+    local srcNodeIp=$(sec_get_dbItem "mlc${srcMlcId}" "ip6"   "name")
+    local dstNodeIp=$(sec_get_dbItem "mlc${dstMlcId}" "ip6"   "name")
+
+    echo "sec_ping_e2e $$"
+    rm -f $outFile
+
+    if [ "$srcMlcIp" ] && [ "$srcNodeIp" ] && [ "$dstNodeIp" ] ; then
+
+	sec_tcpdump $outFile $duration 0 "port 6270 or (icmp6 and src $srcNodeIp and dst $dstNodeIp and ip6[40]=128 and ip6[7]<=30)" &
+	sleep 0.1
+	time $ANA_SSH root@$srcMlcIp "timeout $duration sh -c \"while date && echo newEchoRound && ! ping6 -t 30 -n -i 0.1 $dstNodeIp; do sleep 0.1; done\""
+	sleep 1.5
+	sync
+	killall -15 tcpdump
+	wait
+	echo "$outFile :"
+	ls -l $outFile
+#	tshark -r $outFile
+#	tcpdump -r $outFile -nve -ttttt
+
+	sec_tcpdump_filter $outFile "randomASDF" e > $outFile.all
+#	sec_tcpdump_translate $outFile.all | less
+
+	echo "Last Failed packets:"
+	sec_tcpdump_filter $outFile "$( for s in $(seq $dstMlcId $srcMlcId); do echo -n "mlc$s "; done )" v > $outFile.v
+	sec_tcpdump_translate $outFile.v | grep -v "Filter" | tail -n1
+
+	echo "First Succeeded packets:"
+	sec_tcpdump_filter $outFile "mlc${dstMlcId}" e > $outFile.e
+	sec_tcpdump_translate $outFile.e | grep -v "Filter" | head -n1
+
+    fi
+}
+
+sec_init_attack_scenarios() {
+
+
+    ./mlc-init-host.sh
+    ana_create_nodes
+    mlc_net_flush
+    sec_create_protos_mlc 0
+    sec_create_protos_mlc
+    sec_get_nodeDb
+}
+
+sec_run_attack_scenario() {
+    local aHops=${1:-"X"}
+    local bHops=${2:-"X"}
+    local cHops=${3:-"X"}
+    local lq=${4:-"3"}
+
+    local resultsFile=${1:-$ANA_RESULTS_FILE}
+
+    local updPeriod=0
+    local duration=$ANA_MEASURE_TIME
+    local probes=$ANA_MEASURE_PROBES
+    local probe=
+
+    local start=$(ana_time_stamp)
+    mkdir -p $(dirname $resultsFile)
+
+    rm -rf /tmp/ana.tmp.*
+    local tmpDir=$(mktemp -d /tmp/ana.tmp.XXXXXXXXXX)
+
+    sleep $ANA_MEASURE_GAP
+
+    for probe in $(seq 1 $probes); do
+
+	rm $tmpDir/*
+
+	mlc_net_flush
+	sec_set_trust "" "" "flushAll trustedNodesDir=- attackedNodesDir=-"
+	sec_prepare_trust
+	sec_create_net $aHops $bHops $cHops 3
+	local sd="$((( $ANA_STABILIZE_TIME + $(mlc_rand 5) ))).$(mlc_rand 9)"
+	echo "Wating $sd sec to establish topology"
+	sleep $sd
+
+	echo
+	echo "Adjusting topology link qualities"
+	sec_create_net $aHops $bHops $cHops $lq
+
+	echo
+	echo "Creating attacks"
+	sec_prepare_attacks
+
+	echo
+	echo "Starting ping"
+	sec_ping_e2e $tmpDir/trace $duration 1009 1000 &
+	sec_set_trust "^10[0-0][0,9]$" "/$ANA_NODE_TRUSTED_DIR" "trustedNodesDir"
+
+	true && (
+	    echo "$(ana_time_stamp) bench started"
+	    ana_bench_top_sys  $tmpDir/topSI.out $duration 0 &
+	    ana_bmx_stat_owrt  $tmpDir/bmxOI.out $tmpDir/bmlOI.out &
+	    wait
+	    echo "$(ana_time_stamp) bench finished"
+	)
+
+	wait
+	ana_summarize $tmpDir $resultsFile $ana_time_stamp $updPeriod $duration $start $probe
+    done
+
+    rm -r $tmpDir
+    echo "$(ana_time_stamp) done"
+}
 
 
 
