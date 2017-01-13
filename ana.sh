@@ -7,7 +7,9 @@ mlc_cpu_idle_assumption=35
 
 ANA_MLC_DIR="/home/neumann/mlc-public.git"
 ANA_SSH="$mlc_ssh -i /home/neumann/.ssh/id_rsa "
-ANA_OWRT_DIR="/home/neumann/openwrt/openwrt-15.05.git"
+ANA_OWRT_DIR="/home/neumann/openwrt/openwrt-15.05.git/bin/ar71xx/packages/routing"
+ANA_OWRT_DIR="/home/neumann/lede/lede-source.git/bin/packages/mips_24kc/routing"
+
 ANA_RESULTS_FILE_PREFIX="results-01"
 ANA_NODE_DB_FILE="ana-nodes-db"
 ANA_PROT_DIR="/usr/src/bmx7.git"
@@ -15,7 +17,7 @@ ANA_NODE_TRUSTED_DIR="etc/bmx7/trustedNodes"
 ANA_NODE_ATTACKED_DIR="etc/bmx7/attackedNodes"
 ANA_NODE_ALLKEYS_DIR="etc/bmx7/allNodes"
 ANA_NODE_KEYS_DIR="usr/src/bmxKeys"
-ANA_MAKE_ARGS="'-pg -DPROFILING -DCORE_LIMIT=20000 -DTRAFFIC_DUMP -DCRYPTLIB=POLARSSL_1_3_3'"
+ANA_MAKE_ARGS="'-pg -DPROFILING -DCORE_LIMIT=20000 -DTRAFFIC_DUMP -DCRYPTLIB=MBEDTLS_2_4_0'"
 
 
 ANA_LINK_RSA_LEN=3 # 3:896
@@ -117,10 +119,10 @@ ANA_MLC_KEYS_DIR=$ANA_MLC_DIR/rootfs/mlc0002/rootfs/$ANA_NODE_KEYS_DIR
 ANA_NODE_MAX=$((( $mlc_min_node + $ANA_NODES_MAX - 1 )))
 
 
-#ANA_DST_PACKAGES="$ANA_OWRT_DIR/bin/ar71xx/packages/routing/bmx7_*.ipk $ANA_OWRT_DIR/bin/ar71xx/packages/routing/bmx7-tun*.ipk"
-ANA_DST_PACKAGES="$ANA_OWRT_DIR/bin/ar71xx/packages/routing/bmx7_*.ipk $ANA_OWRT_DIR/bin/ar71xx/packages/routing/bmx7-iwinfo_*.ipk $ANA_OWRT_DIR/bin/ar71xx/packages/routing/bmx7-topology_*.ipk openwrt-routing-package-ana/files/etc/init.d/ana openwrt-routing-package-ana/files/etc/config/wireless"
-ANA_DST_PACKAGES="$ANA_OWRT_DIR/bin/ar71xx/packages/routing/bmx7_*.ipk $ANA_OWRT_DIR/bin/ar71xx/packages/routing/bmx7-iwinfo_*.ipk $ANA_OWRT_DIR/bin/ar71xx/packages/routing/bmx7-tun_*ipk openwrt-routing-package-ana/files/etc/init.d/ana openwrt-routing-package-ana/files/etc/config/wireless"
-ANA_DST_PACKAGES="$ANA_OWRT_DIR/bin/ar71xx/packages/routing/bmx7_*.ipk openwrt-routing-package-ana/files/etc/init.d/ana openwrt-routing-package-ana/files/etc/config/wireless"
+#ANA_DST_PACKAGES="$ANA_OWRT_DIR/bmx7_*.ipk $ANA_OWRT_DIR/bin/ar71xx/packages/routing/bmx7-tun*.ipk"
+ANA_DST_PACKAGES="$ANA_OWRT_DIR//bmx7_*.ipk $ANA_OWRT_DIR/bmx7-iwinfo_*.ipk $ANA_OWRT_DIR/bmx7-topology_*.ipk openwrt-routing-package-ana/ana/files/etc/init.d/ana openwrt-routing-package-ana/ana/files/etc/config/wireless"
+ANA_DST_PACKAGES="$ANA_OWRT_DIR/bmx7_*.ipk $ANA_OWRT_DIR/bmx7-iwinfo_*.ipk $ANA_OWRT_DIR/bmx7-tun_*ipk openwrt-routing-package-ana/ana/files/etc/init.d/ana openwrt-routing-package-ana/ana/files/etc/config/wireless"
+ANA_DST_PACKAGES="$ANA_OWRT_DIR/bmx7_*.ipk openwrt-routing-package-ana/ana/files/etc/init.d/ana openwrt-routing-package-ana/ana/files/etc/config/wireless"
 ANA_DST_BMX7_UPD="ana-owrt-bmx7-upd.sh"
 ANA_DST_FILES="$ANA_MLC_DIR/$ANA_DST_BMX7_UPD"
 
@@ -447,13 +449,13 @@ ana_create_descUpdates_mlc() {
 ana_summarize() {
     local tmpDir=$1
     local resultsFile=$2
-    local ana_time_stamp=$3
-    local updPeriod=$4
-    local duration=$5
-    local start=$6
-    local probe=$7
+    local updPeriod=$3
+    local duration=$4
+    local start=$5
+    local probe=$6
     
-	echo "$(ana_time_stamp) summarizing probe=$probe results from $tmpDir"
+	echo "summarizing  tmpDir=$1  resultsFile=$2  updPeriod=$3 duration=$4  start=$5  probe=$6"
+
 
 	local links="$(   cat $tmpDir/bmxOI.out | awk -F'nbs=' '{print $2}' | cut -d' ' -f1 )"
 	local nodes="$(   cat $tmpDir/bmxOI.out | awk -F'nodes=' '{print $2}' | cut -d'/' -f1 )"
@@ -547,7 +549,8 @@ ana_measure_ovhd_owrt() {
 	    echo "$(ana_time_stamp) bench finished"
 	)
 
-	ana_summarize $tmpDir $resultsFile $ana_time_stamp $updPeriod $duration $start $probe
+	echo "ana_summarize $tmpDir $resultsFile $updPeriod $duration $start $probe"
+	ana_summarize $tmpDir $resultsFile $updPeriod $duration $start $probe
     done
 
     rm -r $tmpDir
@@ -585,9 +588,10 @@ ana_set_protos_owrt() {
 ana_run_ovhd_scenarios() {
 
 #    ana_init_ovhd_scenarios
-    ana_create_protos 0
-    ana_get_keys
-    ana_create_keys
+
+#    ana_create_protos 0
+#    ana_get_keys
+#    ana_create_keys
 
     local params=
     local p=
@@ -606,9 +610,9 @@ ana_run_ovhd_scenarios() {
 	fi
 	echo ANA_LINK_DHM_MAX=$ANA_LINK_DHM_MAX
 
-	ana_create_protos 0
-	ana_get_keys
-	ana_create_keys
+#	ana_create_protos 0
+#	ana_get_keys
+#	ana_create_keys
 
 	if true; then
 
@@ -682,7 +686,7 @@ ana_run_ovhd_scenarios() {
 		done
 
 	    elif true && [ "$ANA_LINK_DHM_MAX" = "40" ]; then
-		params="16 17 18" #16:DH1024M112, 17:DH2048M112, 18:3072M112
+		params="17 18" #16:DH1024M112, 17:DH2048M112, 18:DH3072M112
 		results="$(dirname $ANA_RESULTS_FILE)/$(ana_time_stamp)-ovhdVsTxCrypt-$resultsExtension"
 		ana_create_protos 0
 		ana_create_links_owrt
@@ -1098,7 +1102,7 @@ sec_run_attack_scenario() {
 	)
 
 	wait
-	ana_summarize $tmpDir $resultsFile $ana_time_stamp $updPeriod $duration $start $probe
+	ana_summarize $tmpDir $resultsFile $updPeriod $duration $start $probe
     done
 
     rm -r $tmpDir

@@ -1,0 +1,8 @@
+#!/bin/sh
+
+cp /etc/dropbear/authorized_keys.ana        /etc/dropbear/authorized_keys
+cp /etc/dropbear/dropbear_dss_host_key.ana  /etc/dropbear/dropbear_dss_host_key
+cp /etc/dropbear/dropbear_rsa_host_key.ana  /etc/dropbear/dropbear_rsa_host_key
+
+exit 0
+
