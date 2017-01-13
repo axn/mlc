@@ -586,7 +586,7 @@ ana_run_ovhd_scenarios() {
 
 #    ana_init_ovhd_scenarios
     ana_create_protos 0
-    ana_get_keys    $ANA_NODE_KEY_LEN
+    ana_get_keys
     ana_create_keys
 
     local params=
@@ -597,7 +597,7 @@ ana_run_ovhd_scenarios() {
 
     for round in $(seq 1 $ANA_MEASURE_ROUNDS); do
 
-	if [ "$((( $round % 2 )))" = "1" ]; then
+	if [ "$((( $round % 2 )))" = "0" ]; then
 	    ANA_LINK_DHM_MAX=40 # maxDhmNeighs 0 vs 40
 	    resultsExtension=dhm
 	else
@@ -607,8 +607,8 @@ ana_run_ovhd_scenarios() {
 	echo ANA_LINK_DHM_MAX=$ANA_LINK_DHM_MAX
 
 	ana_create_protos 0
-#	ana_get_keys    $ANA_NODE_KEY_LEN
-#	ana_create_keys
+	ana_get_keys
+	ana_create_keys
 
 	if true; then
 
