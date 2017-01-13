@@ -421,7 +421,11 @@ mlc_help() {
     less mlc-help.txt
 }
 
-
+mlc_rand() {
+    local max=${1:-"1000"}
+    local min=${2:-"0"}
+    echo $((( ( $(dd if=/dev/random bs=4 count=1 2>/dev/null | hexdump -e '"%u\n"') % (($max + 1) - $min) ) + $min )))
+}
 
 
 mlc_gprof() {
@@ -957,35 +961,35 @@ MLC_qdisc_set_rules() {
   
 #                           delay corr loss correlation 
   MLC_qdisc_set_rule $dev 3  0.1ms  0%   0%  0% #BroadCast
-  MLC_qdisc_set_rule $dev 4  0.1ms  0%   0%  0% #UniCast
+  MLC_qdisc_set_rule $dev 4  10ms  0%   0%  0% #UniCast
 
-  MLC_qdisc_set_rule $dev 5  0.2ms  0%   2%  0% #BroadCast
-  MLC_qdisc_set_rule $dev 6  0.4ms  0%   0%  0% # 0.2% #UniCast
+  MLC_qdisc_set_rule $dev 5  0.2ms  0%   5%  0% #BroadCast
+  MLC_qdisc_set_rule $dev 6  10.1ms  0%   0%  0% # 0.2% #UniCast
 #  MLC_qdisc_set_rule $dev 5  0.2ms  0%   0%  0% #BroadCast
 #  MLC_qdisc_set_rule $dev 6  0.4ms  0%   2%  0% # 0.2% #UniCast
 
-  MLC_qdisc_set_rule $dev 7  0.3ms  0%   5%  0% #BroadCast
-  MLC_qdisc_set_rule $dev 8  1.6ms  0%   0%  0% #0.5% #UniCast
+  MLC_qdisc_set_rule $dev 7  0.3ms  0%   10%  0% #BroadCast
+  MLC_qdisc_set_rule $dev 8  10.2ms  0%   0%  0% #0.5% #UniCast
 #  MLC_qdisc_set_rule $dev 7  0.3ms  0%   0%  0% #BroadCast
 #  MLC_qdisc_set_rule $dev 8  1.6ms  0%   5%  0% #0.5% #UniCast
 
-  MLC_qdisc_set_rule $dev 9  0.4ms  0%   10% 0% #BroadCast
-  MLC_qdisc_set_rule $dev 10 6.4ms  0%   0%  0% #1% #UniCast
+  MLC_qdisc_set_rule $dev 9  0.4ms  0%   15% 0% #BroadCast
+  MLC_qdisc_set_rule $dev 10 10.3ms  0%   0%  0% #1% #UniCast
 #  MLC_qdisc_set_rule $dev 9  0.4ms  0%   0% 0% #BroadCast
 #  MLC_qdisc_set_rule $dev 10 6.4ms  0%   10%  0% #1% #UniCast
 
   MLC_qdisc_set_rule $dev 11 0.5ms  0%   20% 0% #BroadCast
-  MLC_qdisc_set_rule $dev 12 25ms   0%   0%  0% #2% #UniCast
+  MLC_qdisc_set_rule $dev 12 10.4ms   0%   0%  0% #2% #UniCast
 #  MLC_qdisc_set_rule $dev 11 0.5ms  0%   0% 0% #BroadCast
 #  MLC_qdisc_set_rule $dev 12 25ms   0%   20%  0% #2% #UniCast
 
-  MLC_qdisc_set_rule $dev 13 0.6ms  0%   40% 0% #0.8ms 25% BroadCast
-  MLC_qdisc_set_rule $dev 14 100ms  0%   0%  0% #5% #UniCast
+  MLC_qdisc_set_rule $dev 13 0.6ms  0%   25% 0% #0.8ms 25% BroadCast
+  MLC_qdisc_set_rule $dev 14 10.5ms  0%   0%  0% #5% #UniCast
 #  MLC_qdisc_set_rule $dev 13 0.6ms  0%   0% 0% #0.8ms 25% BroadCast
 #  MLC_qdisc_set_rule $dev 14 100ms  0%   40%  0% #5% #UniCast
 
-  MLC_qdisc_set_rule $dev 15 0.7ms  0%   80% 0% #1ms 40% BroadCast
-  MLC_qdisc_set_rule $dev 16 400ms  0%   0%  0% #10% #UniCast
+  MLC_qdisc_set_rule $dev 15 0.7ms  0%   30% 0% #1ms 40% BroadCast
+  MLC_qdisc_set_rule $dev 16 10.6ms  0%   0%  0% #10% #UniCast
 #  MLC_qdisc_set_rule $dev 15 0.7ms  0%   0% 0% #1ms 40% BroadCast
 #  MLC_qdisc_set_rule $dev 16 400ms  0%   80%  0% #10% #UniCast
 
