@@ -49,6 +49,9 @@ bmx6 -lc traffic=summary status interfaces links locals originators descriptions
 sudo tcpdump -i mbr1 -n -s0 -w 20110501-01-olsrd-0.6.1-ipv4-grid_1_1_0_0_199.rawdump
 
 sudo tcpdump -nve -s 200 -i ${mlc_bridge_prefix}1 icmp[icmptype] == icmp-timxceed or 'ip[8] < ( 64 - 29 )'
+sudo tcpdump -nve -s 200 -i ${mlc_bridge_prefix}1 'ip6[7] < 50' and icmp6
+
+
 
 sudo trafshow -n -i ${mlc_bridge_prefix}1 (takes a very long time to start off)
 sudo bwm-ng -I ${mlc_bridge_prefix}1
