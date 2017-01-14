@@ -421,6 +421,11 @@ mlc_help() {
     less mlc-help.txt
 }
 
+mlc_rand() {
+    local max=${1:-"1000"}
+    local min=${2:-"0"}
+    echo $((( ( $(dd if=/dev/random bs=4 count=1 2>/dev/null | hexdump -e '"%u\n"') % (($max + 1) - $min) ) + $min )))
+}
 
 
 
