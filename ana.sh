@@ -534,8 +534,8 @@ ana_measure_ovhd_owrt() {
 	true && (
 	    echo "$(ana_time_stamp) bench started"
 
-#	    ana_bench_top_owrt $tmpDir/topOI.out $duration 0 &
-#	    ana_bench_tcp_owrt $tmpDir/tcpOI.out $duration 0 &
+	    ana_bench_top_owrt $tmpDir/topOI.out $duration 0 &
+	    ana_bench_tcp_owrt $tmpDir/tcpOI.out $duration 0 &
 	    ana_bench_top_sys  $tmpDir/topSI.out $duration 0 &
 	    ana_bmx_stat_owrt  $tmpDir/bmxOI.out $tmpDir/bmlOI.out &
 	    wait
@@ -610,9 +610,9 @@ ana_run_ovhd_scenarios() {
 	fi
 	echo ANA_LINK_DHM_MAX=$ANA_LINK_DHM_MAX
 
-#	ana_create_protos 0
-#	ana_get_keys
-#	ana_create_keys
+	ana_create_protos 0
+	ana_get_keys
+	ana_create_keys
 
 	if true; then
 
