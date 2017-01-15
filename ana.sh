@@ -297,25 +297,24 @@ ana_create_keys() {
     local roleColor=${1:-"all-trusted-nodes"}
     local pattern="${2:-""}"
     local targetDir=${3:-"$ANA_NODE_TRUSTED_DIR"}
-    local keysDir="/$ANA_NODE_KEYS_DIR/${roleColor}"
     local allNodes="$(seq $mlc_min_node $((($mlc_min_node - 1 + $ANA_NODES_MAX))) )  $ANA_DSTS_IP4"
     local anaId=
 
     for anaId in $allNodes; do
-	echo "A: $keysDir $anaId"
+	echo "A: $anaId"
 	
 	if echo "$anaId" | grep -qe "$pattern"; then
 	    
 	    local anaIp="$( echo "$ANA_DSTS_IP4" | grep -o "$anaId" || MLC_calc_ip4 $mlc_ip4_admin_prefix1 $anaId $mlc_admin_idx )"
 
-	    echo "B: $keysDir $anaId $anaIp"
+	    echo "B: $ANA_MLC_KEYS_DIR/${roleColor} /$ANA_NODE_KEYS_DIR/${roleColor}  $targetDir $anaId $anaIp"
 	    if echo "$ANA_DSTS_IP4" | grep -q "$anaId"; then
 		$mlc_ssh root@$anaIp "rm -rf /$targetDir; rm -rf /tmp/$targetDir; mkdir -p /tmp/$targetDir; ln -s /tmp/$targetDir /$targetDir"
-		scp $keysDir/*RSA* root@$anaIp:/$targetDir/
+		scp $ANA_MLC_KEYS_DIR/${roleColor}/*RSA* root@$anaIp:/$targetDir/
 	    else
 		local nodeName="${mlc_name_prefix}${anaId}"
 		rm -rf $ANA_MLC_DIR/rootfs/$nodeName/rootfs/$targetDir
-		ln -s $keysDir $ANA_MLC_DIR/rootfs/$nodeName/rootfs/$targetDir
+		ln -s /$ANA_NODE_KEYS_DIR/${roleColor} $ANA_MLC_DIR/rootfs/$nodeName/rootfs/$targetDir
 	    fi
 	fi
     done
