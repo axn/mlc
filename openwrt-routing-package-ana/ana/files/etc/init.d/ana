@@ -32,9 +32,10 @@ start_service() {
 
 	# sleep 5
 	# cat /proc/sys/kernel/hostname | grep "o$DIX" || reboot
+	echo "o$IDX" > /proc/sys/kernel/hostname
 
 	while killall bmx7; do timeout 0.2 sleep 1d; done
-
+	echo 10 > /proc/sys/net/ipv6/icmp/ratelimit
 	ps | grep "iperf -Vs" | grep -v grep || iperf -Vs &
 	ip6tables --flush
 	$FIRE
