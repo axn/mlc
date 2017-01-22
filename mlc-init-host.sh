@@ -98,6 +98,7 @@ mlc_cpu_max
 
 /etc/init.d/munin-node stop # stop munin-node # service munin-node stop
 /etc/init.d/smokeping stop
+/etc/init.d/apport stop
 
 echo "WARNING! Disabled cron, munin, smokeping, ... services to prevent casual cpu load."
 echo " Reenable them after mlc usage!"
