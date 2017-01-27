@@ -825,18 +825,17 @@ sec_get_keys() {
     echo "roleColor=$roleColor pattern=$pattern keysDir=$keysDir"
 
     mkdir -p $keysDir
-    rm -v $keysDir/*RSA*
+    rm -v $keysDir/*
 
     for anaId in $allNodes; do
 	if echo "$anaId" | grep -qe "$pattern"; then
 	    local anaIp="$( echo "$ANA_DSTS_IP4" | grep -o "$anaId" || MLC_calc_ip4 $mlc_ip4_admin_prefix1 $anaId $mlc_admin_idx )"
-
 	    
 	    local nodeId="$(   sec_get_dbItem $anaIp id   mlcIp )"; nodeId=${nodeId:-"-"}
 	    local nodeKey="$(  sec_get_dbItem $anaIp rsa  mlcIp )"; nodeKey=${nodeKey:-"-"}
 	    local nodeName="$( sec_get_dbItem $anaIp name mlcIp )"; nodeName=${nodeName:-"-"}
 
-	    echo "nodeId=$nodeId  nodeName=$nodeName nodeKey=$nodeKey"
+	    echo "anaIp=$anaIp nodeId=$nodeId nodeName=$nodeName nodeKey=$nodeKey"
 	    touch $keysDir/$nodeId.$nodeName.$nodeKey
 	fi
     done
@@ -864,16 +863,16 @@ sec_prepare_trust() {
     sec_set_trust "" "-" "trustedNodesDir"
 #   sec_set_trust "" "/$ANA_NODE_TRUSTED_DIR" "trustedNodesDir"
 
-    sec_get_keys z-trusted-nodes "$ZPattern"
+    sec_get_keys     z-trusted-nodes "$ZPattern"
     ana_create_keys  z-trusted-nodes "$zPattern" $ANA_NODE_TRUSTED_DIR
 
-    sec_get_keys a-trusted-nodes "$APattern"
+    sec_get_keys     a-trusted-nodes "$APattern"
     ana_create_keys  a-trusted-nodes "$aPattern" $ANA_NODE_TRUSTED_DIR
 
-    sec_get_keys b-trusted-nodes "$BPattern"
+    sec_get_keys     b-trusted-nodes "$BPattern"
     ana_create_keys  b-trusted-nodes "$bPattern" $ANA_NODE_TRUSTED_DIR
 
-    sec_get_keys c-trusted-nodes "$CPattern"
+    sec_get_keys     c-trusted-nodes "$CPattern"
     ana_create_keys  c-trusted-nodes "$cPattern" $ANA_NODE_TRUSTED_DIR
 
 }
@@ -933,7 +932,7 @@ sec_get_nodeDb() {
 	local nodeDev="$( echo "$nodeVersion" | grep dev= | awk -F'dev=' '{print $2}' | cut -d' ' -f1 )"; nodeDev=${nodeDev:-"-"}
 	local mlcIp="$( echo "$nodeVersion" | grep inet | awk '{print $2}' | cut -d'/' -f1 )"; mlcIp=${mlcIp:-"-"}
 	echo "nodeVersion=$nodeVersion:"
-	echo "id=$nodeId ip6=$nodeIp name=$nodeName rsa=$nodeKey dev=$nodeDev mac=$nodeMac mlcIp=$mlcIp" | tee -a $dbFile
+	echo "id=$nodeId ip6=$nodeIp name=$nodeName rsa=$nodeKey dev=$nodeDev mac=$nodeMac mlcIp=$mlcIp " | tee -a $dbFile
     done
     
 }
@@ -945,7 +944,7 @@ sec_get_dbItem() {
     local inField=${3:-"name"}
     local dbFile=${4:-"$ANA_NODE_DB_FILE"}
 
-    local nodeInfo="$(grep -e "${inField}=${pattern}"  $dbFile)"
+    local nodeInfo="$(grep -e "${inField}=${pattern} "  $dbFile)"
 
 #   echo "nodeInfo=$nodeInfo"
     
@@ -1137,9 +1136,13 @@ sec_measure_attack_scenario() {
 
 }
 
+sec_run_attack_scenario() {
+    echo empty
+}
+
 sec_run_attack_scenarios() {
 
-    sec_init_attack_scenarios
+#    sec_init_attack_scenarios
 
     for round in $(seq 1 $ANA_MEASURE_ROUNDS); do
 
@@ -1154,12 +1157,12 @@ sec_run_attack_scenarios() {
 	fi
 
 	local losses="3 5 7 9 11 13 15"
-	local losses="9 11 13 15"
+	local losses="3 9 15"
 
 	for l in $losses; do
 
 	    local params="1 2 3 4 5 6 7 8 X"
-#	    local params="1 3 5 8 X"
+	    local params="1 5 8 X"
 
 	    if true; then
 		local resultsFile="$(dirname $ANA_RESULTS_FILE)/$(ana_time_stamp)-recoveryVsTrustHops-$l"
