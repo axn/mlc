@@ -10,7 +10,6 @@ ANA_SSH="$mlc_ssh -i /home/neumann/.ssh/id_rsa "
 ANA_OWRT_DIR="/home/neumann/openwrt/openwrt-15.05.git/bin/ar71xx/packages/routing"
 ANA_OWRT_DIR="/home/neumann/lede/lede-source.git/bin/packages/mips_24kc/routing"
 
-ANA_RESULTS_FILE_PREFIX="results-01"
 ANA_NODE_DB_FILE="ana-nodes-db"
 ANA_PROT_DIR="/usr/src/bmx7.git"
 ANA_NODE_TRUSTED_DIR="etc/bmx7/trustedNodes"
@@ -64,40 +63,6 @@ ANA_RT_RAISE_TIME=6
 ANA_PROBE_DELAY_TIME=3
 ANA_PROBE_SAFE_TIME=30
 
-ANA_ATTACK_ROLE_COLORS=(orange rosa cyan)
-ANA_CPA_ATTACK_NODE="1009"
-ANA_CPA_TRUST_NODES="1002 1007 1152 1157"
-ANA_NODE_PROBE_PAIRS="1002:1152 1007:1157 1012:1162 1012:1152 1012:1157"
-
-ANA_ATTACK_OF_PREFIX="role"
-ANA_ROLE_FILE_FORMAT="%-8s %-9s %-8s %-5s %-12s %-8s %-40s %-35s %8s %8s %6s %6s %8s %9s\n"
-ANA_ROLE_FILE_HEADER="topoCols  topoNodes  penLevel  mlcId  mlcIp  nodeName  nodeId  nodeIp  nodeCol  nodeLine  nRLMin        nRLMax        nodeRole  nodeColor"
-ANA_ROLE_FILE_COL_MLCID=3
-ANA_ROLE_FILE_COL_MLCIP=4
-ANA_ROLE_FILE_COL_NODEROLE=12
-ANA_ROLE_FILE_COL_NODECOLOR=13
-ANA_ROLE_FILE_COL_NAME=5
-ANA_ROLE_FILE_COL_NODEID=6
-ANA_ROLE_FILE_COL_NODEIP=7
-
-ANA_TRUST_TABLE=( \
-    1 0 1 \
-    0 1 1 \
-    1 1 1 )
-
-ANA_ATTACK_TABLE=( \
-    0 1 0 \
-    1 0 0 \
-    0 0 0 )
-
-
-################################
-# for attack scenarios:
-ANA_NODES_MAX=165 # 150
-ANA_ATTACK_PEN_LEVEL=0
-ANA_ATTACK_TOPO_COLS=15
-ANA_ATTACK_TOPO_ROLES=3
-ANA_MAIN_OPTS="linkKeyLifetime=0 linkRsaKey=$ANA_LINK_RSA_LEN linkDhmKey=$ANA_LINK_DHM_LEN trustedNodesDir=/$ANA_NODE_TRUSTED_DIR attackedNodesDir=/$ANA_NODE_ATTACKED_DIR evilRouteDropping=1 evilDescDropping=1"
 
 # for owrt perf scenarios:
 ANA_NODES_MAX=200
@@ -128,7 +93,6 @@ ANA_DST_FILES="$ANA_MLC_DIR/$ANA_DST_BMX7_UPD"
 
 ANA_RESULTS_FILE="$ANA_MLC_DIR/ana/results.dat"
 
-ANA_ATTACK_OF_DIR="$ANA_MLC_DIR/ana"
 
 
 ana_time_stamp() {
@@ -375,18 +339,20 @@ ana_bench_top_sys() {
     cat $outFile
 }
 
-ana_bench_tcp_owrt() {
+ana_bench_tcp_devMac() {
     local outFile=$1
     local duration=${2:-$ANA_MEASURE_TIME}
     local delay=${3:-$ANA_PROBE_DELAY_TIME}
+    local dev=${4:-$ANA_DST_DEV}
+    local mac=${5:-$ANA_DST1_MAC}
 
-    echo "$(ana_time_stamp) ana_bench_tcp_owrt init"
+    echo "$(ana_time_stamp) ana_bench_devMac_owrt init"
     sleep $delay
-    echo "$(ana_time_stamp) ana_bench_tcp_owrt begin"
-    timeout $duration tcpdump -nve -i $ANA_DST_DEV -s 200 -w $outFile.tmp 2>/dev/null
+    echo "$(ana_time_stamp) ana_bench_devMac_owrt begin"
+    timeout $duration tcpdump -nve -i $dev -s 200 -w $outFile.tmp 2>/dev/null
 
-    local rxStats=$(tshark -r $outFile.tmp -qz "io,stat,$duration,eth.src!=$ANA_DST1_MAC&&udp.port==$ANA_UDP_PORT" 2>/dev/null| tail -n2 |head -n1)
-    local txStats=$(tshark -r $outFile.tmp -qz "io,stat,$duration,eth.src==$ANA_DST1_MAC&&udp.port==$ANA_UDP_PORT" 2>/dev/null| tail -n2 |head -n1)
+    local rxStats=$(tshark -r $outFile.tmp -qz "io,stat,$duration,eth.src!=$mac&&udp.port==$ANA_UDP_PORT" 2>/dev/null| tail -n2 |head -n1)
+    local txStats=$(tshark -r $outFile.tmp -qz "io,stat,$duration,eth.src==$mac&&udp.port==$ANA_UDP_PORT" 2>/dev/null| tail -n2 |head -n1)
     echo " \
        rxP=$( echo "scale=2; $(echo $rxStats | awk '{print $6}')/$duration" | bc ) \
        rxB=$( echo "scale=2; $(echo $rxStats | awk '{print $8}')/$duration" | bc ) \
@@ -395,7 +361,7 @@ ana_bench_tcp_owrt() {
        " > $outFile
 
      cat $outFile
-    echo "$(ana_time_stamp) ana_bench_tcp_owrt end"
+    echo "$(ana_time_stamp) ana_bench_devMac_owrt end"
 }
 
 ana_bmx_stat_ip4() {
@@ -497,7 +463,7 @@ ana_summarize() {
 	local bHops=$(cat $tmpDir/topo.out | awk -F'bHops=' '{print $2}'| cut -d' ' -f1)
 	local cHops=$(cat $tmpDir/topo.out | awk -F'cHops=' '{print $2}'| cut -d' ' -f1)
 	local hopLq=$(cat $tmpDir/topo.out | awk -F'lq=' '{print $2}'| cut -d' ' -f1)
-	local hopLl=$( (tc qdisc show | grep "parent 1:$(printf %x $hopLq)" | grep -oe "loss [0-9]*%" || echo "loss 0%") |  grep -oe "[0-9]*" | sort -u | head -n1)
+	local hopLl=$( (tc qdisc show | grep "veth1000_1" | grep "parent 1:$(printf %x $hopLq)" | grep -oe "loss [0-9]*%" || echo "loss 0%") |  grep -oe "[0-9]*" | sort -u | head -n1)
 
 	local lTime=$(cat $tmpDir/trace.out | awk -F'lTime=' '{print $2}'| cut -d' ' -f1)
 	local fTime=$(cat $tmpDir/trace.out | awk -F'fTime=' '{print $2}'| cut -d' ' -f1)
@@ -546,15 +512,15 @@ ana_measure_ovhd_owrt() {
 	true && (
 	    echo "$(ana_time_stamp) bench started"
 
-	    ana_bench_top_owrt $tmpDir/topOI.out $duration 0 &
-	    ana_bench_tcp_owrt $tmpDir/tcpOI.out $duration 0 &
+	    ana_bench_top_owrt   $tmpDir/topOI.out $duration 0 &
+	    ana_bench_tcp_devMac $tmpDir/tcpOI.out $duration 0 &
 	    ana_bench_top_sys  $tmpDir/topSI.out $duration 0 &
 	    ana_bmx_stat_ip4   $ANA_DST1_IP4  $tmpDir/bmxOI.out $tmpDir/bmlOI.out &
 	    wait
 
 	    [ "$rtLoad" != "0" ] && (
-		ana_bench_tp_owrt  $tmpDir/tpOL.out  $((($duration + $ANA_RT_RAISE_TIME))) &
-		ana_bench_tcp_owrt $tmpDir/tcpOL.out $duration $ANA_PROBE_DELAY_TIME &
+		ana_bench_tp_owrt    $tmpDir/tpOL.out  $((($duration + $ANA_RT_RAISE_TIME))) &
+		ana_bench_tcp_devMac $tmpDir/tcpOL.out $duration $ANA_PROBE_DELAY_TIME &
 		ana_bench_top_sys  $tmpDir/topSL.out $duration $ANA_PROBE_DELAY_TIME &
 		wait
 	    )
@@ -738,7 +704,7 @@ sec_create_protos_mlc() {
     local nodes=${1:-$ANA_NODES_DEF}
 
     local ANA_MLC_CMD="rm -rf /root/bmx7/*; mkdir -p /root/bmx7; cd /root/bmx7; ulimit -c 20000; \
-   $ANA_PROTO_CMD plugin=bmx7_evil.so nodeRsaKey=$ANA_NODE_KEY_LEN /keyPath=/etc/bmx7/rsa.$ANA_NODE_KEY_LEN $ANA_MAIN_OPTS maxDhmNeighs=$ANA_LINK_DHM_MAX $ANA_MLC_DEVS txBucketDrain=100  \
+   $ANA_PROTO_CMD plugin=bmx7_evil.so nodeRsaKey=$ANA_NODE_KEY_LEN /keyPath=/etc/bmx7/rsa.$ANA_NODE_KEY_LEN $ANA_MAIN_OPTS maxDhmNeighs=$ANA_LINK_DHM_MAX $ANA_MLC_DEVS txBucketDrain=100 descRetryInterval=100 resolveIterations=10 \
    > /root/bmx7/bmx7.log 2>&1 &"
 
     if [ "$nodes" = "0" ]; then
@@ -1039,7 +1005,7 @@ sec_ping_e2e() {
 	echo "Last Failed packets:"
 	sec_tcpdump_filter $outFile "$( for s in $(seq $dstMlcId $srcMlcId); do echo -n "mlc$s "; done )" v > $outFile.v
 	local lCatched="$(sec_tcpdump_translate $outFile.v | grep -v "Filter" | tail -n1)"
-	local lTime="$(echo "$lCatched" | cut -d' ' -f1 | cut -d':' -f3)"
+	local lTime="$( echo "scale=2; ( ( $(echo "$lCatched" | cut -d' ' -f1 | cut -d':' -f2) * 60 )   +   $(echo "$lCatched" | cut -d' ' -f1 | cut -d':' -f3) )" | bc )"
 	local lSeq="$(echo "$lCatched"  | awk -F'seq ' '{print $2}' )"
 	local lHlim="$(echo "$lCatched"  | awk -F'hlim ' '{print $2}' | cut -d ',' -f1 )"
 	local lTxNode="$(echo "$lCatched" | cut -d' ' -f2)"
@@ -1048,7 +1014,7 @@ sec_ping_e2e() {
 	echo "First Succeeded packets:"
 	sec_tcpdump_filter $outFile "mlc${dstMlcId}" e > $outFile.e
 	local fCatched="$(sec_tcpdump_translate $outFile.e | grep -v "Filter" | head -n1)"
-	local fTime="$(echo "$fCatched" | cut -d' ' -f1 | cut -d':' -f3)"
+	local fTime="$( echo "scale=3; ( ( $(echo "$fCatched" | cut -d' ' -f1 | cut -d':' -f2) * 60 )   +   $(echo "$fCatched" | cut -d' ' -f1 | cut -d':' -f3) )" | bc )"
 	local fSeq="$(echo "$fCatched"  | awk -F'seq ' '{print $2}' )"
 	local fHlim="$(echo "$fCatched"  | awk -F'hlim ' '{print $2}' | cut -d ',' -f1 )"
 	local fTxNode="$(echo "$fCatched" | cut -d' ' -f2)"
@@ -1106,24 +1072,25 @@ sec_measure_attack_scenario() {
 	sleep $sd
 
 	echo
-	echo "Adjusting topology link qualities"
-	sec_create_net $aHops $bHops $cHops $lq
-	echo "aHops=$aHops bHops=$bHops cHops=$cHops lq=$lq" > $tmpDir/topo.out
-    
-
-	echo
 	echo "Creating attacks"
 	sec_prepare_attacks
 
 	echo
+	echo "Adjusting topology link qualities"
+	sec_create_net $aHops $bHops $cHops $lq
+	echo "aHops=$aHops bHops=$bHops cHops=$cHops lq=$lq" > $tmpDir/topo.out
+    
+	sleep 2
+
+	echo
 	echo "Starting ping"
 	sec_ping_e2e $tmpDir/trace $duration 1009 1000 &
-	sec_set_trust "^10[0-0][0,9]$" "/$ANA_NODE_TRUSTED_DIR" "trustedNodesDir"
+	sec_set_trust "^10[0-0][0]$" "/$ANA_NODE_TRUSTED_DIR" "trustedNodesDir"
 
 	true && (
 	    echo "$(ana_time_stamp) bench started"
 #	    ana_bench_top_owrt $tmpDir/topOI.out $duration 0 &
-#	    ana_bench_tcp_owrt $tmpDir/tcpOI.out $duration 0 &
+	    ana_bench_tcp_devMac $tmpDir/tcpOI.out $duration 0 veth1000_1 $(sec_get_dbItem mlc1000 mac name) &
 	    ana_bench_top_sys  $tmpDir/topSI.out $duration 0 &
 	    ana_bmx_stat_ip4   10.0.10.9 $tmpDir/bmxOI.out $tmpDir/bmlOI.out &
 	    wait
@@ -1143,446 +1110,49 @@ sec_run_attack_scenario() {
 sec_run_attack_scenarios() {
 
 #    sec_init_attack_scenarios
+    sec_create_protos_mlc
 
     for round in $(seq 1 $ANA_MEASURE_ROUNDS); do
 
-	local losses="3 5 7 9 11 13 15"
-#	local losses="3 7 11 15"
+	if true; then
+	    local losses="3 5 7 9 11 13 15"
 
-	if false; then
 	    local resultsFile="$(dirname $ANA_RESULTS_FILE)/$(ana_time_stamp)-recoveryVsLoss"
 	    for l in $losses; do
 		time sec_measure_attack_scenario 8 X 1 $l $resultsFile
 	    done
 	fi
 
-	local losses="3 5 7 9 11 13 15"
-	local losses="3 9 15"
+	if true; then
+	    local losses="3 5 7 9 11 13 15"
+	    local losses="3 5 9 13"
 
-	for l in $losses; do
+	    for l in $losses; do
 
-	    local params="1 2 3 4 5 6 7 8 X"
-	    local params="1 5 8 X"
+		local params="1 2 3 4 5 6 7 8 X"
 
-	    if true; then
-		local resultsFile="$(dirname $ANA_RESULTS_FILE)/$(ana_time_stamp)-recoveryVsTrustHops-$l"
-		for p in $params; do
-		    time sec_measure_attack_scenario $p X 1 $l $resultsFile
-		done
-	    fi
+		if true; then
+		    local resultsFile="$(dirname $ANA_RESULTS_FILE)/$(ana_time_stamp)-recoveryVsTrustHops-$l"
+		    for p in $params; do
+			time sec_measure_attack_scenario $p X 1 $l $resultsFile
+		    done
+		fi
 
-	    if true; then
-		local resultsFile="$(dirname $ANA_RESULTS_FILE)/$(ana_time_stamp)-recoveryVsEvilHops-$l"
-		for p in $params; do
-		    time sec_measure_attack_scenario 8 X $p $l $resultsFile
-		done
-	    fi
-	    
-	    if true; then
-		local resultsFile="$(dirname $ANA_RESULTS_FILE)/$(ana_time_stamp)-recoveryVsSuppHops-$l"
-		for p in $params; do
-		    time sec_measure_attack_scenario 8 $p 1 $l $resultsFile
-		done
-	    fi
-
-	done
-    done
-}
-
-
-
-ana_fetch_node_role() {
-
-    local anaId=${1:-$mlc_min_node}
-    local penLevel=${2:-$ANA_ATTACK_PEN_LEVEL}
-    local rsaLen=${3:-"$ANA_NODE_KEY_LEN"}
-
-    local anaIp="$(MLC_calc_ip4 $mlc_ip4_admin_prefix1 $anaId $mlc_admin_idx )"
-    local nodeName="${mlc_name_prefix}${anaId}"
-    local nodeVersion="$( $mlc_ssh root@$anaIp "( bmx7 -c version || bmx7 nodeRsaKey=$rsaLen /keyPath=/etc/bmx7/rsa.$rsaLen version ) | grep version=BMX" )"
-    local nodeId="$( echo "$nodeVersion" | awk -F'id=' '{print $2}' | cut -d' ' -f1 )"; nodeId=${nodeId:-"-"}
-    local nodeIp="$( echo "$nodeVersion" | awk -F'ip=' '{print $2}' | cut -d' ' -f1 )"; nodeIp=${nodeIp:-"-"}
-
-    local topoColsPerRole=$((( $ANA_ATTACK_TOPO_COLS / $ANA_ATTACK_TOPO_ROLES )))
-    local nodeIdx=$((( $anaId - $mlc_min_node )))
-    local nodeCol=$((( $nodeIdx % $ANA_ATTACK_TOPO_COLS )))
-    local nodeLine=$((( $nodeIdx / $ANA_ATTACK_TOPO_COLS )))
-    local topoLines=$((( $ANA_NODES_MAX / $ANA_ATTACK_TOPO_COLS )))
-    local topoLineTop=0
-    local topoLineBottom=$((( $topoLines - 1 )))
-    local nodeRoleLMin=$((( $nodeCol / $topoColsPerRole )))
-    local nodeRoleLMax=$nodeRoleLMin
-    local nodeRole=$nodeRoleLMin
-    local rolePenetrationLines=$((( ($topoLines-2) / $ANA_ATTACK_TOPO_ROLES )))
-
-
-    if [ $nodeLine -gt $topoLineTop ] && [ $nodeLine -lt  $topoLineBottom ]; then
-
-	nodeRoleLMax=$((( ( $nodeLine - 1 ) / $rolePenetrationLines )))
-
-	local leftL0ColBound=$((( $nodeRoleLMax * $topoColsPerRole )))
-	local leftLxColBound=$((( $leftL0ColBound - $penLevel )))
-	local rightL0ColBound=$((( $leftL0ColBound + $topoColsPerRole - 1 )))
-	local rightLxColBound=$((( $rightL0ColBound + $penLevel )))
-
-	local fixedNodeCol=$nodeCol
-
-	if [ $leftLxColBound -lt 0 ] && [ $nodeCol -ge $((( $ANA_ATTACK_TOPO_COLS - $penLevel ))) ]; then
-	    fixedNodeCol=$((( $nodeCol - $ANA_ATTACK_TOPO_COLS )))
+		if true; then
+		    local resultsFile="$(dirname $ANA_RESULTS_FILE)/$(ana_time_stamp)-recoveryVsEvilHops-$l"
+		    for p in $params; do
+			time sec_measure_attack_scenario 8 X $p $l $resultsFile
+		    done
+		fi
+		
+		if true; then
+		    local resultsFile="$(dirname $ANA_RESULTS_FILE)/$(ana_time_stamp)-recoveryVsSuppHops-$l"
+		    for p in $params; do
+			time sec_measure_attack_scenario 8 $p 1 $l $resultsFile
+		    done
+		fi
+	    done
 	fi
-	
-	if [ $rightLxColBound -ge $ANA_ATTACK_TOPO_COLS ] && [ $nodeCol -le $((( $penLevel - 1 ))) ]; then
-	    fixedNodeCol=$((( $nodeCol + $ANA_ATTACK_TOPO_COLS )))
-	fi
-
-	if [ $fixedNodeCol -ge $leftLxColBound ] && [ $fixedNodeCol -le $rightLxColBound ]; then
-	    nodeRole=$nodeRoleLMax
-	fi
-
-    fi
-
-
-   [ $nodeIdx -eq 0 ] &&\
-    printf "$ANA_ROLE_FILE_FORMAT" $ANA_ROLE_FILE_HEADER >&2
-    printf "$ANA_ROLE_FILE_FORMAT" $ANA_ATTACK_TOPO_COLS $ANA_NODES_MAX $penLevel $anaId $anaIp $nodeName $nodeId $nodeIp $nodeCol $nodeLine $nodeRoleLMin $nodeRoleLMax $nodeRole ${ANA_ATTACK_ROLE_COLORS[$nodeRole]}
-}
-
-ana_fetch_role() {
-
-    local penLevel=${1:-$ANA_ATTACK_PEN_LEVEL}
-    local rsaLen=${2:-"$ANA_NODE_KEY_LEN"}
-    local roleFile="$ANA_ATTACK_OF_DIR/$ANA_ATTACK_OF_PREFIX-$penLevel"
-
-    local i=
-
-    mkdir -p $ANA_ATTACK_OF_DIR
-    rm -f $roleFile
-
-    for i in $(seq $mlc_min_node $ANA_NODE_MAX); do
-	
-	local line="$(ana_fetch_node_role $i $penLevel $rsaLen )"
-	echo "$line" >> $roleFile 
-	echo "$line"
-	printf "%d" $(echo "$line" | awk '{print $13}')
-
-	[ $((( ($i + 1 - $mlc_min_node) % $ANA_ATTACK_TOPO_COLS ))) -eq 0 ] && echo
-
-    done
-    echo
-}
-
-ana_fetch_roles() {
-    local penLevels=${1:-"$((( $ANA_ATTACK_TOPO_COLS / $ANA_ATTACK_TOPO_ROLES )))"}
-    local rsaLen=${2:-"$ANA_NODE_KEY_LEN"}
-    local i=
-
-    for i in $(seq 0 $penLevels); do
-	ana_fetch_role $i $rsaLen
-    done
-
-}
-
-ana_create_role_dir_links() {
-
-    local penLevel=${1:-$ANA_ATTACK_PEN_LEVEL}
-    local roleFile="$ANA_ATTACK_OF_DIR/$ANA_ATTACK_OF_PREFIX-$penLevel"
-    local subjectLine=
-
-    rm -rf $ANA_MLC_DIR/rootfs/mlc1*/rootfs/$ANA_NODE_TRUSTED_DIR
-    rm -rf $ANA_MLC_DIR/rootfs/mlc1*/rootfs/$ANA_NODE_ATTACKED_DIR
-
-    
-    while read -r subjectLine; do
-	local subjectLineArray=($subjectLine)
-	
-	local subjectMlcId=${subjectLineArray[$ANA_ROLE_FILE_COL_MLCID]}
-	local subjectName=${subjectLineArray[$ANA_ROLE_FILE_COL_NAME]}
-	local subjectRole=${subjectLineArray[$ANA_ROLE_FILE_COL_NODEROLE]}
-	local subjectRoleColor=${ANA_ATTACK_ROLE_COLORS[$subjectRole]}
-
-	echo "checking: subjectRole=$subjectRoleColor subject: mlcId=$subjectMlcId name=$subjectName role=$subjectRole"
-	
-	if [ $subjectMlcId -le $ANA_NODE_MAX ]; then
-	    ln -s /$ANA_NODE_KEYS_DIR/$subjectRoleColor-trusted-nodes   $ANA_MLC_DIR/rootfs/$subjectName/rootfs/$ANA_NODE_TRUSTED_DIR
-	    ln -s /$ANA_NODE_KEYS_DIR/$subjectRoleColor-attacked-nodes  $ANA_MLC_DIR/rootfs/$subjectName/rootfs/$ANA_NODE_ATTACKED_DIR
-	fi
-    done < $roleFile
-}
-
-ana_get_role_behavior() {
-    declare -a argTable=("${!1}")
-    local line_subjectRole=$2
-    local col_objectRole=$3
-
-    local item=$((( $line_subjectRole * $ANA_ATTACK_TOPO_ROLES + $col_objectRole )))
-    
-    [ "${argTable[$item]}"  = "1" ] &&  true ||  false 
-}
-
-ana_test_get_role_behavior() {
-
-    local c=
-    local l=
-
-    for c in $(seq 0 2); do
-	for l in $(seq 0 2); do
-	    printf "%d" $( ana_get_role_behavior ANA_TRUST_TABLE[@] $l $c && echo 1 || echo 0 )
-	done
-	echo
-    done
-
-   [ "$1"  = "1" ] &&  true ||  false 
-}
-
-
-ana_create_role_key_dirs() {
-
-    local penLevel=${1:-$ANA_ATTACK_PEN_LEVEL}
-    local roleFile="$ANA_ATTACK_OF_DIR/$ANA_ATTACK_OF_PREFIX-$penLevel"
-    local subjectRole=
-    local objectLine=
-
-    for subjectRole in $(seq 0 $((( $ANA_ATTACK_TOPO_ROLES - 1))) ); do
-	local subjectRoleColor=${ANA_ATTACK_ROLE_COLORS[$subjectRole]}
-	local trustedNodesDir="$ANA_MLC_KEYS_DIR/$subjectRoleColor-trusted-nodes"
-	local attackedNodesDir="$ANA_MLC_KEYS_DIR/$subjectRoleColor-attacked-nodes"
-
-	mkdir -p $trustedNodesDir
-	rm -f $trustedNodesDir/*
-	mkdir -p $attackedNodesDir
-	rm -f $attackedNodesDir/*
-
-	while read -r objectLine; do
-	    local objectLineArray=($objectLine)
-	    
-	    local objectMlcId=${objectLineArray[$ANA_ROLE_FILE_COL_MLCID]}
-	    local objectName=${objectLineArray[$ANA_ROLE_FILE_COL_NAME]}
-	    local objectRole=${objectLineArray[$ANA_ROLE_FILE_COL_NODEROLE]}
-	    local objectKey=${objectLineArray[$ANA_ROLE_FILE_COL_NODEID]}
-
-	    echo "checking: subjectRole=$subjectRoleColor object: mlcId=$objectMlcId name=$objectName role=$objectRole key=$objectKey"
-	    
-	    if [ $objectMlcId -le $ANA_NODE_MAX ]; then
-		ana_get_role_behavior ANA_TRUST_TABLE[@]  $subjectRole $objectRole && touch $trustedNodesDir/$objectKey.$objectName
-		ana_get_role_behavior ANA_ATTACK_TABLE[@] $subjectRole $objectRole && touch $attackedNodesDir/$objectKey.$objectName
-	    fi
-	done < $roleFile
-
-    done 
-
-    ana_create_role_dir_links $penLevel
-}
-
-
-
-ana_enable_trust() {
-   local nodeId=${1:-"$ANA_CPA_TRUST_NODES"}
-   local id=
-   for id in $nodeId; do
-       mlc_loop -i $id -e "bmx7 -c trustedNodesDir=/etc/bmx7/trustedNodes"
-   done
-}
-
-ana_disable_trust() {
-   local nodeId=${1:-"$ANA_CPA_TRUST_NODES"}
-   local id=
-   for id in $nodeId; do
-       mlc_loop -i $id -e "bmx7 -c trustedNodesDir=-"
-   done
-}
-
-ana_enable_cpa_attack() {
-   local nodeId=${1:-"$ANA_CPA_ATTACK_NODE"}
-   mlc_loop -i $nodeId -e "bmx7 -c evilOgmSqns=1" 
-}
-
-ana_disable_cpa_attack() {
-   local nodeId=${1:-"$ANA_CPA_ATTACK_NODE"}
-   mlc_loop -i $nodeId -e "bmx7 -c evilOgmSqns=-" 
-}
-
-
-ana_measure_e2e_route() {
-
-    local srcNodeId=${1}
-    local dstNodeId=${2}
-    local penLevel=${3:-"$ANA_ATTACK_PEN_LEVEL"}
-    
-    local roleFile="$ANA_ATTACK_OF_DIR/$ANA_ATTACK_OF_PREFIX-$penLevel"
-    local objectLine=
-    local srcMlcIp=
-    local dstNodeIp=
-
-    while read -r objectLine; do
-	local objectLineArray=($objectLine)
-	local objectMlcId=${objectLineArray[$ANA_ROLE_FILE_COL_MLCID]}
-	local objectMlcIp=${objectLineArray[$ANA_ROLE_FILE_COL_MLCIP]}
-	local objectNodeIp=${objectLineArray[$ANA_ROLE_FILE_COL_NODEIP]}
-	
-	if [ $objectMlcId -eq $srcNodeId ]; then
-	    srcMlcIp=$objectMlcIp
-	fi
-	if [ $objectMlcId -eq $dstNodeId ]; then
-	    dstNodeIp=$objectNodeIp
-	fi
-    done < $roleFile
-
-    echo "-------------------------------------------" >&2
-    echo "srcMlcIp=$srcMlcIp dstNodeIp=$dstNodeIp ..." >&2
-
-    local rtt=$( \
-	[ "$srcMlcIp" ] && [ "$dstNodeIp" ] && \
-	echo "$($ANA_SSH root@$srcMlcIp "time ping6 -n -i 0.1 -c1 -w $ANA_PING_DEADLINE $dstNodeIp " 2>&1 | grep -e '^real' | grep -e '0m' | cut -d'm' -f2 | cut -d's' -f1 ) * 1000" | bc  -l | cut -d'.' -f1 )
-    
-    [ "$rtt" ] && [ $rtt -le $((( 1000 * ( $ANA_PING_DEADLINE - 1)))) ] && echo $rtt || echo NA 
-}
-
-ana_init_attack_scenarios() {
-
-    ./mlc-init-host.sh
-
-    ana_create_nodes
-
-    ana_create_protos_mlc 0
-
-    ana_fetch_roles
-
-}
-
-ana_configure_grid() {
-
-    local lq=${2:-"$ANA_LQ"}
-
-    mlc_net_flush
-#   mlc_configure_grid <dev_idx> [lq] [loop_x_lq] [loop_y_lq] [0=ortographic,1=diagonal] [distance] [max_node]    [min_node]    [rq] [loop_x_rq] [loop_y_rq] [columns]             [purge]
-    mlc_configure_grid $ANA_MBR  $lq  $lq         0           0                          1          $ANA_NODE_MAX $mlc_min_node $lq  $lq         0           $ANA_ATTACK_TOPO_COLS 1
-}
-
-
-
-ana_measure_e2e_recovery() {
-
-    local lq=${1:-$ANA_LQ}
-    local penLevel=${2:-$ANA_ATTACK_PEN_LEVEL}
-    local srcNodeId=${3}
-    local dstNodeId=${4}
-
-    local resultsDir=$ANA_RESULTS_DIR
-    local resultsFile=$ANA_RESULTS_FILE_PREFIX
-
-    mkdir -p $resultsDir
-    touch $resultsDir/$resultsFile
-
-    ana_disable_trust $dstNodeId
-    ana_enable_cpa_attack $ANA_CPA_ATTACK_NODE
-    sleep $ANA_STABILIZE_TIME
-    ana_enable_trust $dstNodeId &
-
-    local recoveryLatency=$( ana_measure_e2e_route $srcNodeId $dstNodeId )
-
-    echo   "date nodes cols roles penLevel stabTime srcId dstId cpaId latency ttl rtt ovhd sysCpu srcNodeMem dstNodeMem"
-    printf "%20  " \
-	$(ana_time_stamp) \
-	$ANA_NODES_MAX \
-	$ANA_ATTACK_TOPO_COLS \
-	$ANA_ATTACK_TOPO_ROLES \
-	$penLevel \
-	$ANA_STABILIZE_TIME \
-	$srcNodeId \
-	$dstNodeId \
-	$ANA_CPA_ATTACK_NODE \
-	$recoveryLatency \
-	\
-	>> $resultsDir/$resultsFile
-}
-
-
-ana_run_attack_scenarios() {
-
-    local lq=${1:-$ANA_LQ}
-    local penLevel=${2:-$ANA_ATTACK_PEN_LEVEL}
-
-
-    ana_create_protos_mlc 0
-    ana_create_role_key_dirs $penLevel
-    ana_create_protos_mlc 0
-    ana_create_protos_mlc $ANA_NODES_MAX
-
-    local srcDstId=
-    for srcDstId in $ANA_NODE_PROBE_PAIRS; do
-	local srcId=$( echo $srcDstId | cut -d':' -f1 )
-	local dstId=$( echo $srcDstId | cut -d':' -f2 )
-	
-	local results=$( ana_measure_e2e_recovery $lq $penLevel $srcId $dstId )
-    done
-
-}
-
-ana_all() {
-
-    local lq=${1:-$ANA_LQ}
-    local penLevels=$((( $ANA_ATTACK_TOPO_COLS / $ANA_ATTACK_TOPO_ROLES )))
-    local i=
-
-#    ana_init_attack_scenarios
-
-    ana_configure_grid $ANA_NODE_MAX $lq $ANA_ATTACK_TOPO_COLS
-
-    for i in $(seq 0 $penLevels); do
-	echo ana_run_attack_scenarios $lq $i
     done
 }
 
-################################
-# misc...
-
-
-ana_create_random_set() {
-
-    local NUM=${1:-50}
-    local FROM=${2:-100}
-
-    local IN="$(seq 0 $(($FROM-1)) )"
-    local OUT=
-
-    for i in $(seq 1 $NUM); do
-#	echo "IN=$IN"
-	
-	local R=$(./ana_rand.sh 1 $(($FROM+1-$i)) )
-#	echo "COL=$R"
-
-	local VAL=$(echo "$IN" | sed -n ${R}p )
-#	echo "VAL=$VAL"
-	
-	if [ "$OUT" ]; then
-	    OUT="$OUT $VAL"
-	else
-	    OUT="$VAL"
-	fi
-#	echo "OUT=$OUT"
-
-	IN="$(echo "$IN" | sed  "${R}d" )"
-
-    done
-    
-    echo "$OUT"
-}
-
-ana_create_random_keys() {
-    local NUM=${1:-50}
-    local FROM=${1:-$ANA_NODES_DEF}
-
-    local keysPath=$ANA_MLC_KEYS_DIR/
-
-    local keysSortedAll="$(for f in $(ls -l $keysPath/ | grep -o -e "mlc...." -e "o101" | sort); do (cd $keysPath && ls *.$f); done)"
-    
-    local keysSortedFrom="$(echo "$keysSortedAll" | head -n $FROM)"
-
-    for i in $(seq 1 $NUM); do
-	let from=$FROM+1-$i
-
-	pickId=$(./ana_rand 1 $from )
-    done
-
-
-}
