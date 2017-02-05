@@ -941,16 +941,18 @@ sec_tcpdump_filter() {
     local inFile=${1:-"/tmp/test"}
     local patterns=${2:-"mlc1000"}
     local grepCond=${3:-"v"}
-    local outField=${4:-"mac"}
-    local inField=${5:-"name"}
-    local dbFile=${6:-"$ANA_NODE_DB_FILE"}
+    local grepStart=${4:-"00:00:00.000000"}
+    local outField=${5:-"mac"}
+    local inField=${6:-"name"}
+    local dbFile=${7:-"$ANA_NODE_DB_FILE"}
+    local inData="$(tcpdump -r $inFile -nevv -ttttt 2>/dev/null | sed "0,/$grepStart/d" | grep icmp6)"
+    local p=
 
-    local inData="$(tcpdump -r $inFile -nevv -ttttt 2>/dev/null | grep icmp6)"
-
-    echo "Filter $grepCond results inFile=$inFile patterns=$patterns :"
+    echo "Filter $grepCond results inFile=$inFile patterns=$patterns  grepStart=$grepStart: "
 
     for p in $patterns; do
-	inData="$(echo "$inData" | grep -$grepCond " > $(sec_get_dbItem $p $outField $inField)")"
+	local grepMac="$(sec_get_dbItem $p $outField $inField)"
+	inData="$(echo "$inData" | grep -$grepCond " > $grepMac")"
     done
     echo "$inData"
 }
@@ -1005,6 +1007,7 @@ sec_ping_e2e() {
 	echo "Last Failed packets:"
 	sec_tcpdump_filter $outFile "$( for s in $(seq $dstMlcId $srcMlcId); do echo -n "mlc$s "; done )" v > $outFile.v
 	local lCatched="$(sec_tcpdump_translate $outFile.v | grep -v "Filter" | tail -n1)"
+	local lFullTime="$( echo $lCatched | cut -d' ' -f1 )"
 	local lTime="$( echo "scale=2; ( ( $(echo "$lCatched" | cut -d' ' -f1 | cut -d':' -f2) * 60 )   +   $(echo "$lCatched" | cut -d' ' -f1 | cut -d':' -f3) )" | bc )"
 	local lSeq="$(echo "$lCatched"  | awk -F'seq ' '{print $2}' )"
 	local lHlim="$(echo "$lCatched"  | awk -F'hlim ' '{print $2}' | cut -d ',' -f1 )"
@@ -1012,7 +1015,7 @@ sec_ping_e2e() {
 	local lRxNode="$(echo "$lCatched" | cut -d' ' -f4)"
 
 	echo "First Succeeded packets:"
-	sec_tcpdump_filter $outFile "mlc${dstMlcId}" e > $outFile.e
+	sec_tcpdump_filter $outFile "mlc${dstMlcId}" e $lFullTime > $outFile.e
 	local fCatched="$(sec_tcpdump_translate $outFile.e | grep -v "Filter" | head -n1)"
 	local fTime="$( echo "scale=3; ( ( $(echo "$fCatched" | cut -d' ' -f1 | cut -d':' -f2) * 60 )   +   $(echo "$fCatched" | cut -d' ' -f1 | cut -d':' -f3) )" | bc )"
 	local fSeq="$(echo "$fCatched"  | awk -F'seq ' '{print $2}' )"
@@ -1109,8 +1112,8 @@ sec_run_attack_scenario() {
 
 sec_run_attack_scenarios() {
 
-#    sec_init_attack_scenarios
-    sec_create_protos_mlc
+    sec_init_attack_scenarios
+#    sec_create_protos_mlc
 
     for round in $(seq 1 $ANA_MEASURE_ROUNDS); do
 
@@ -1125,6 +1128,7 @@ sec_run_attack_scenarios() {
 
 	if true; then
 	    local losses="3 5 7 9 11 13 15"
+	    local losses="3 5 9 13"
 	    local losses="3 5 9 13"
 
 	    for l in $losses; do
