@@ -469,8 +469,8 @@ ana_summarize() {
 	local fTime=$(cat $tmpDir/trace.out | awk -F'fTime=' '{print $2}'| cut -d' ' -f1)
 
 
-	FORMAT="%16s %16s %8s %5s %9s   %6s %6s %6s %20s %11s %11s %11s %9s   %5s %10s %6s %3s   %4s %4s %6s %4s %4s %4s   %8s %8s %8s %8s  %8s %8s %8s %8s   %11s %6s   %2s %2s %2s %2s %2s  %11s %11s" 
-	FIELDS="start end duration probe revision  Links Routes Nodes linkKeys linkRsa linkDhm nodeRsa updPeriod  txq tp rtt ttl  CPU BCPU Memory idOI idSI idSL  outPps txPL outBps txBL inPps rxPL inBps rxBL  uptime lstDsc   aH bH cH hQ hL   lstFailTime fstSuccTime"
+	FORMAT="%16s %16s %8s %5s %9s   %6s %6s %6s %20s %8s %8s %8s %9s   %5s %10s %6s %3s   %4s %4s %6s %4s %4s %4s   %8s %8s %8s %8s  %8s %8s %8s %8s   %11s %6s   %2s %2s %2s %2s %2s  %11s %11s  %s" 
+	FIELDS="start end duration probe revision  Links Routes Nodes linkKeys linkRsa linkDhm nodeRsa updPeriod  txq tp rtt ttl  CPU BCPU Memory idOI idSI idSL  outPps txPL outBps txBL inPps rxPL inBps rxBL  uptime lstDsc   aH bH cH hQ hL   lstFailTime fstSuccTime tmpDir"
 	printf "$FORMAT \n" $FIELDS
 	[ -f $resultsFile ] || printf "$FORMAT \n" $FIELDS > $resultsFile
 	printf "$FORMAT \n" \
@@ -482,6 +482,7 @@ ana_summarize() {
 	    ${uptime:-"NA"} ${lstDsc:-"NA"} \
 	    ${aHops:-"NA"} ${bHops:-"NA"} ${cHops:-"NA"} ${hopLq:-"NA"} ${hopLl:-"NA"} \
 	    ${lTime:-"NA"} ${fTime:-"NA"} \
+	    ${tmpDir} \
 	    | tee -a $resultsFile
 }
 
@@ -497,7 +498,7 @@ ana_measure_ovhd_owrt() {
     local start=$(ana_time_stamp)
     mkdir -p $(dirname $resultsFile)
 
-    rm -rf /tmp/ana.tmp.*
+#   rm -rf /tmp/ana.tmp.*
     local tmpDir=$(mktemp -d /tmp/ana.tmp.XXXXXXXXXX)
 
     if [ "$updPeriod" != "0" ]; then
@@ -991,8 +992,10 @@ sec_ping_e2e() {
 
 	sec_tcpdump $outFile $duration 0 "port 6270 or (icmp6 and src $srcNodeIp and dst $dstNodeIp and ip6[40]=128 and ip6[7]<=30)" &
 	sleep 0.1
-	time $ANA_SSH root@$srcMlcIp "timeout $duration sh -c \"while date && echo newEchoRound && ! ping6 -t 30 -n -i 0.1 $dstNodeIp; do sleep 0.1; done\""
+	time $ANA_SSH root@$srcMlcIp "timeout $duration sh -c \"while date && echo newEchoRound && ! ping6 -t 30 -n -i 0.1 $dstNodeIp; do sleep 0.1; done\"" &
 	sleep 1.5
+	timeout $duration tcpdump -nvei veth${dstMlcId}_$ANA_MBR -c 100 "icmp6 and src $srcNodeIp and dst $dstNodeIp and ip6[40]<=128 and ip6[7]<=30"
+	kill $(ps aux | grep -v grep | grep -v timeout | grep -e "ping6 -t 30" | awk '{print $2}')
 	sync
 	killall -15 tcpdump
 	wait
@@ -1030,7 +1033,6 @@ sec_ping_e2e() {
 
 sec_init_attack_scenarios() {
 
-
     ./mlc-init-host.sh
     ana_create_nodes
     mlc_net_flush
@@ -1059,7 +1061,7 @@ sec_measure_attack_scenario() {
 
 	local start=$(ana_time_stamp)
 
-	rm -rf /tmp/ana.tmp.*
+#	rm -rf /tmp/ana.tmp.*
 #	mv /tmp/ana.tmp.* /tmp/ana.last
 #	local tmpDir=$(mktemp -d /tmp/ana.tmp.XXXXXXXXXX)
 	local tmpDir="/tmp/ana.tmp.$start"
@@ -1092,9 +1094,9 @@ sec_measure_attack_scenario() {
 
 	true && (
 	    echo "$(ana_time_stamp) bench started"
-#	    ana_bench_top_owrt $tmpDir/topOI.out $duration 0 &
-	    ana_bench_tcp_devMac $tmpDir/tcpOI.out $duration 0 veth1000_1 $(sec_get_dbItem mlc1000 mac name) &
-	    ana_bench_top_sys  $tmpDir/topSI.out $duration 0 &
+#	    ana_bench_top_owrt   $tmpDir/topOI.out 20 0 &
+	    ana_bench_tcp_devMac $tmpDir/tcpOI.out 20 0 veth1000_1 $(sec_get_dbItem mlc1000 mac name) &
+	    ana_bench_top_sys    $tmpDir/topSI.out 20 0 &
 	    ana_bmx_stat_ip4   10.0.10.9 $tmpDir/bmxOI.out $tmpDir/bmlOI.out &
 	    wait
 	    echo "$(ana_time_stamp) bench finished"
@@ -1112,7 +1114,7 @@ sec_run_attack_scenario() {
 
 sec_run_attack_scenarios() {
 
-    sec_init_attack_scenarios
+#    sec_init_attack_scenarios
 #    sec_create_protos_mlc
 
     for round in $(seq 1 $ANA_MEASURE_ROUNDS); do
@@ -1129,11 +1131,12 @@ sec_run_attack_scenarios() {
 	if true; then
 	    local losses="3 5 7 9 11 13 15"
 	    local losses="3 5 9 13"
-	    local losses="3 5 9 13"
+	    local losses="3 9 13"
 
 	    for l in $losses; do
 
 		local params="1 2 3 4 5 6 7 8 X"
+#		local params="1 3 4 5 X"
 
 		if true; then
 		    local resultsFile="$(dirname $ANA_RESULTS_FILE)/$(ana_time_stamp)-recoveryVsTrustHops-$l"
