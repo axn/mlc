@@ -464,13 +464,16 @@ ana_summarize() {
 	local cHops=$(cat $tmpDir/topo.out | awk -F'cHops=' '{print $2}'| cut -d' ' -f1)
 	local hopLq=$(cat $tmpDir/topo.out | awk -F'lq=' '{print $2}'| cut -d' ' -f1)
 	local hopLl=$( (tc qdisc show | grep "veth1000_1" | grep "parent 1:$(printf %x $hopLq)" | grep -oe "loss [0-9]*%" || echo "loss 0%") |  grep -oe "[0-9]*" | sort -u | head -n1)
+	local aNode=$(cat $tmpDir/topo.out | awk -F'aNode=' '{print $2}'| cut -d' ' -f1)
+	
 
 	local lTime=$(cat $tmpDir/trace.out | awk -F'lTime=' '{print $2}'| cut -d' ' -f1)
 	local fTime=$(cat $tmpDir/trace.out | awk -F'fTime=' '{print $2}'| cut -d' ' -f1)
+	local sTime=$(cat $tmpDir/trace.out | awk -F'sTime=' '{print $2}'| cut -d' ' -f1)
 
 
-	FORMAT="%16s %16s %8s %5s %9s   %6s %6s %6s %20s %8s %8s %8s %9s   %5s %10s %6s %3s   %4s %4s %6s %4s %4s %4s   %8s %8s %8s %8s  %8s %8s %8s %8s   %11s %6s   %2s %2s %2s %2s %2s  %11s %11s  %s" 
-	FIELDS="start end duration probe revision  Links Routes Nodes linkKeys linkRsa linkDhm nodeRsa updPeriod  txq tp rtt ttl  CPU BCPU Memory idOI idSI idSL  outPps txPL outBps txBL inPps rxPL inBps rxBL  uptime lstDsc   aH bH cH hQ hL   lstFailTime fstSuccTime tmpDir"
+	FORMAT="%16s %16s %8s %5s %9s   %6s %6s %6s %20s %8s %8s %8s %9s   %5s %10s %6s %3s   %4s %4s %6s %4s %4s %4s   %8s %8s %8s %8s  %8s %8s %8s %8s   %11s %6s   %2s %2s %2s %2s %2s %2s   %11s %11s %11s"
+	FIELDS="start end duration probe revision  Links Routes Nodes linkKeys linkRsa linkDhm nodeRsa updPeriod  txq tp rtt ttl  CPU BCPU Memory idOI idSI idSL  outPps txPL outBps txBL inPps rxPL inBps rxBL  uptime lstDsc   aH bH cH hQ hL aN   lstFailTime fstSuccTime lstSuccTime"
 	printf "$FORMAT \n" $FIELDS
 	[ -f $resultsFile ] || printf "$FORMAT \n" $FIELDS > $resultsFile
 	printf "$FORMAT \n" \
@@ -480,9 +483,8 @@ ana_summarize() {
 	    ${cpOI:-"NA"} ${bmxCpu:-"NA"} ${mmOI:-"NA"} ${idOI:-"NA"} ${idSI:-"NA"} ${idSL:-"NA"} \
 	    ${txPI:-"NA"} ${txPL:-"NA"} ${txBI:-"NA"} ${txBL:-"NA"} ${rxPI:-"NA"} ${rxPL:-"NA"} ${rxBI:-"NA"} ${rxBL:-"NA"} \
 	    ${uptime:-"NA"} ${lstDsc:-"NA"} \
-	    ${aHops:-"NA"} ${bHops:-"NA"} ${cHops:-"NA"} ${hopLq:-"NA"} ${hopLl:-"NA"} \
-	    ${lTime:-"NA"} ${fTime:-"NA"} \
-	    ${tmpDir} \
+	    ${aHops:-"NA"} ${bHops:-"NA"} ${cHops:-"NA"} ${hopLq:-"NA"} ${hopLl:-"NA"} ${aNode:-"NA"} \
+	    ${lTime:-"NA"} ${fTime:-"NA"} ${sTime:-"NA"} \
 	    | tee -a $resultsFile
 }
 
@@ -499,7 +501,10 @@ ana_measure_ovhd_owrt() {
     mkdir -p $(dirname $resultsFile)
 
 #   rm -rf /tmp/ana.tmp.*
-    local tmpDir=$(mktemp -d /tmp/ana.tmp.XXXXXXXXXX)
+#   local tmpDir=$(mktemp -d /tmp/ana.tmp.XXXXXXXXXX)
+    local tmpDir="/tmp/ana.tmp.$start"
+    mkdir -p $tmpDir
+    rm $tmpDir/*
 
     if [ "$updPeriod" != "0" ]; then
 	local longDuration=$((( (($duration + $ANA_PROBE_SAFE_TIME) * 2 * $probes) + $ANA_MEASURE_GAP  )))
@@ -734,7 +739,6 @@ sec_create_net() {
     local cHops=${3:-"X"}
     local lq=${4:-"3"}
 
-    mlc_net_flush
     # mlc_configure_grid 1 $lq 0 0 0 1 $ANA_NODE_MAX 1010 $lq 0 0 10 1
     mlc_configure_line 1 $lq 0 1008 $lq 0 1001 0
     mlc_configure_line 1 $lq 0 1018 $lq 0 1011 0
@@ -766,17 +770,15 @@ sec_create_net() {
     [[ "$cHops" =~  ^[0-8]$ ]] && mlc_link_set 1 1029 1 102${cHops} $lq $lq 0
 }
 
-sec_set_trust() {
+sec_set_cmd() {
     local pattern="${1:-""}"
-    local dir=${2:-"/$ANA_NODE_TRUSTED_DIR"} 
-    local dirType=${3:-"trustedNodesDir"} 
+    local cmd="${2:-status}"
     local allNodes="$(seq $mlc_min_node $((($mlc_min_node - 1 + $ANA_NODES_MAX))) )  $ANA_DSTS_IP4"
 
     for anaId in $allNodes; do
 	if echo "$anaId" | grep -qe "$pattern"; then
 	    local anaIp="$( echo "$ANA_DSTS_IP4" | grep -o "$anaId" || MLC_calc_ip4 $mlc_ip4_admin_prefix1 $anaId $mlc_admin_idx )"
-	    echo ssh root@$anaIp "bmx7 -c $dirType=$dir"
-	    $mlc_ssh root@$anaIp "bmx7 -c $dirType=$dir"
+	    $mlc_ssh root@$anaIp "bmx7 -c $cmd"
 	fi
     done
 }
@@ -827,8 +829,8 @@ sec_prepare_trust() {
     local zPattern=${7:-"^10[0-2][1-8]$"}
 
 
-    sec_set_trust "" "-" "trustedNodesDir"
-#   sec_set_trust "" "/$ANA_NODE_TRUSTED_DIR" "trustedNodesDir"
+    sec_set_cmd "" "trustedNodesDir=-"
+#   sec_set_cmd ""  "trustedNodesDir=/$ANA_NODE_TRUSTED_DIR"
 
     sec_get_keys     z-trusted-nodes "$ZPattern"
     ana_create_keys  z-trusted-nodes "$zPattern" $ANA_NODE_TRUSTED_DIR
@@ -847,33 +849,34 @@ sec_prepare_trust() {
 sec_prepare_attacks() {
 
     local APattern=${1:-"^1020$"} # attackeds
-    local aPattern=${2:-"^10[0-0][0-9]$"} # attacker
+    local aPattern=${2:-"^100[0-9]$"} # attacker
 
-    local BPattern=${3:-"^10[0,2]0$"}
-    local bPattern=${4:-"^10[1-1][0-9]$"}
+    local BPattern=${3:-"^1000$"}
+    local bPattern=${4:-"^101[0-9]$"}
 
     local CPattern=${5:-"^1000$"}
-    local cPattern=${6:-"^10[2-2][0-9]$"}
+    local cPattern=${6:-"^102[0-9]$"}
 
-#   sec_set_trust "" "-" "attackedNodesDir"
-    sec_set_trust "" "/$ANA_NODE_ATTACKED_DIR" "attackedNodesDir"
+    local sPattern=${7:-""}
+    local attackCmds="${8:-"evilRouteDropping=1 evilDescDropping=1 evilOgmDropping=0 evilOgmMetrics=1"}"
+
+    echo "sec_prepare_attacks AP=$APattern aP=$aPattern BP=$BPattern bP=$bPattern CP=$CPattern cP=$cPattern sP=$sPattern aCmds=$attackCmds"
+
+    sec_set_cmd "" "attackedNodesDir=- evilRouteDropping=0 evilDescDropping=0 evilOgmDropping=0 evilOgmMetrics=0"
 
     sec_get_keys a-attacked-nodes "$APattern"
     ana_create_keys  a-attacked-nodes "$aPattern" $ANA_NODE_ATTACKED_DIR
-    sec_set_trust "$aPattern" 1 evilRouteDropping
-    sec_set_trust "$aPattern" 1 evilDescDropping
-#   sec_set_trust "$aPattern" 1 evilOgmDropping
-#   sec_set_trust "$aPattern" 1 evilOgmMetrics
+    sec_set_cmd "$aPattern" "$attackCmds"
 
     sec_get_keys b-attacked-nodes "$BPattern"
     ana_create_keys  b-attacked-nodes "$bPattern" $ANA_NODE_ATTACKED_DIR
-    sec_set_trust "$bPattern" 1 evilRouteDropping
-    sec_set_trust "$bPattern" 0 evilDescDropping
+    sec_set_cmd "$bPattern" "evilRouteDropping=1"
 
     sec_get_keys c-attacked-nodes "$CPattern"
     ana_create_keys  c-attacked-nodes "$cPattern" $ANA_NODE_ATTACKED_DIR
-    sec_set_trust "$cPattern" 1 evilRouteDropping
-    sec_set_trust "$cPattern" 1 evilDescDropping
+    sec_set_cmd "$cPattern" "$attackCmds"
+
+    sec_set_cmd "$sPattern" "attackedNodesDir=/$ANA_NODE_ATTACKED_DIR" 
 }
 
 
@@ -978,8 +981,9 @@ sec_ping_e2e() {
 
     local outFile=${1:-"/tmp/ana.trace"}
     local duration=${2:-$ANA_MEASURE_TIME}
-    local srcMlcId=${3:-"1009"}
-    local dstMlcId=${4:-"1000"}
+    local succeeds=${3:-"10"}
+    local srcMlcId=${4:-"1009"}
+    local dstMlcId=${5:-"1000"}
     
     local srcMlcIp=$(sec_get_dbItem "mlc${srcMlcId}" "mlcIp" "name")
     local srcNodeIp=$(sec_get_dbItem "mlc${srcMlcId}" "ip6"   "name")
@@ -994,7 +998,7 @@ sec_ping_e2e() {
 	sleep 0.1
 	time $ANA_SSH root@$srcMlcIp "timeout $duration sh -c \"while date && echo newEchoRound && ! ping6 -t 30 -n -i 0.1 $dstNodeIp; do sleep 0.1; done\"" &
 	sleep 1.5
-	timeout $duration tcpdump -nvei veth${dstMlcId}_$ANA_MBR -c 100 "icmp6 and src $srcNodeIp and dst $dstNodeIp and ip6[40]<=128 and ip6[7]<=30"
+	timeout $duration tcpdump -nvei veth${dstMlcId}_$ANA_MBR -c $(((10 * $succeeds))) "icmp6 and src $srcNodeIp and dst $dstNodeIp and ip6[40]<=128 and ip6[7]<=30"
 	kill $(ps aux | grep -v grep | grep -v timeout | grep -e "ping6 -t 30" | awk '{print $2}')
 	sync
 	killall -15 tcpdump
@@ -1007,7 +1011,7 @@ sec_ping_e2e() {
 	sec_tcpdump_filter $outFile "randomASDF" e > $outFile.all
 #	sec_tcpdump_translate $outFile.all | less
 
-	echo "Last Failed packets:"
+	echo "Last Failed packet:"
 	sec_tcpdump_filter $outFile "$( for s in $(seq $dstMlcId $srcMlcId); do echo -n "mlc$s "; done )" v > $outFile.v
 	local lCatched="$(sec_tcpdump_translate $outFile.v | grep -v "Filter" | tail -n1)"
 	local lFullTime="$( echo $lCatched | cut -d' ' -f1 )"
@@ -1017,7 +1021,7 @@ sec_ping_e2e() {
 	local lTxNode="$(echo "$lCatched" | cut -d' ' -f2)"
 	local lRxNode="$(echo "$lCatched" | cut -d' ' -f4)"
 
-	echo "First Succeeded packets:"
+	echo "First Succeeded packet:"
 	sec_tcpdump_filter $outFile "mlc${dstMlcId}" e $lFullTime > $outFile.e
 	local fCatched="$(sec_tcpdump_translate $outFile.e | grep -v "Filter" | head -n1)"
 	local fTime="$( echo "scale=3; ( ( $(echo "$fCatched" | cut -d' ' -f1 | cut -d':' -f2) * 60 )   +   $(echo "$fCatched" | cut -d' ' -f1 | cut -d':' -f3) )" | bc )"
@@ -1026,8 +1030,15 @@ sec_ping_e2e() {
 	local fTxNode="$(echo "$fCatched" | cut -d' ' -f2)"
 	local fRxNode="$(echo "$fCatched" | cut -d' ' -f4)"
 
-	echo "srcMlcId=$srcMlcId dstMlcId=$dstMlcId   lTime=$lTime lSeq=$lSeq lHlim=$lHlim lTxNode=$lTxNode lRxNode=$lRxNode   fTime=$fTime fSeq=$fSeq fHlim=$fHlim fTxNode=$fTxNode fRxNode=$fRxNode" > $outFile.out
+	echo "Last Succeeded packet:"
+	local sCatched="$(sec_tcpdump_translate $outFile.e | grep -v "Filter" | tail -n1)"
+	local sTime="$( echo "scale=3; ( ( $(echo "$sCatched" | cut -d' ' -f1 | cut -d':' -f2) * 60 )   +   $(echo "$sCatched" | cut -d' ' -f1 | cut -d':' -f3) )" | bc )"
+	local sSeq="$(echo "$sCatched"  | awk -F'seq ' '{print $2}' )"
+	local sHlim="$(echo "$sCatched"  | awk -F'hlim ' '{print $2}' | cut -d ',' -f1 )"
+	local sTxNode="$(echo "$sCatched" | cut -d' ' -f2)"
+	local sRxNode="$(echo "$sCatched" | cut -d' ' -f4)"
 
+	echo "srcMlcId=$srcMlcId dstMlcId=$dstMlcId   lTime=$lTime lSeq=$lSeq lHlim=$lHlim lTxNode=$lTxNode lRxNode=$lRxNode   fTime=$fTime fSeq=$fSeq fHlim=$fHlim fTxNode=$fTxNode fRxNode=$fRxNode   sTime=$sTime sSeq=$sSeq sHlim=$sHlim sTxNode=$sTxNode sRxNode=$sRxNode" > $outFile.out
     fi
 }
 
@@ -1047,9 +1058,14 @@ sec_measure_attack_scenario() {
     local cHops=${3:-"X"}
     local lq=${4:-"3"}
     local resultsFile=${5:-$ANA_RESULTS_FILE}
-
+    local aNode=${6:-"X"}
+    local tPattern="${7:-"^1000$"}"
+    local attackPattern="${8:-""}"
+    local attackCmds="${9:-""}"
+    local duration="${10:-$ANA_MEASURE_TIME}"
+    local succeeds="${11:-10}"
+    
     local updPeriod=0
-    local duration=$ANA_MEASURE_TIME
     local probes=$ANA_MEASURE_PROBES
     local probe=
 
@@ -1069,7 +1085,7 @@ sec_measure_attack_scenario() {
 	rm $tmpDir/*
 
 	mlc_net_flush
-	sec_set_trust "" "" "flushAll trustedNodesDir=- attackedNodesDir=-"
+	sec_set_cmd "" "flushAll trustedNodesDir=- attackedNodesDir=-"
 	sec_prepare_trust
 	sec_create_net $aHops $bHops $cHops 3
 	local sd="$((( $ANA_STABILIZE_TIME + $(mlc_rand 5) ))).$(mlc_rand 9)"
@@ -1077,20 +1093,18 @@ sec_measure_attack_scenario() {
 	sleep $sd
 
 	echo
-	echo "Creating attacks"
-	sec_prepare_attacks
-
-	echo
 	echo "Adjusting topology link qualities"
 	sec_create_net $aHops $bHops $cHops $lq
-	echo "aHops=$aHops bHops=$bHops cHops=$cHops lq=$lq" > $tmpDir/topo.out
-    
-	sleep 2
+	echo "aHops=$aHops bHops=$bHops cHops=$cHops lq=$lq aNode=$aNode" > $tmpDir/topo.out
 
 	echo
+	echo "Creating attacks"
+	sec_prepare_attacks $attackPattern "$attackCmds"
+#	sleep 2
+	echo
 	echo "Starting ping"
-	sec_ping_e2e $tmpDir/trace $duration 1009 1000 &
-	sec_set_trust "^10[0-0][0]$" "/$ANA_NODE_TRUSTED_DIR" "trustedNodesDir"
+	sec_ping_e2e $tmpDir/trace $duration $succeeds  &
+	sec_set_cmd "$tPattern" "trustedNodesDir=/$ANA_NODE_TRUSTED_DIR"
 
 	true && (
 	    echo "$(ana_time_stamp) bench started"
@@ -1103,9 +1117,8 @@ sec_measure_attack_scenario() {
 	)
 
 	wait
-	ana_summarize $tmpDir $resultsFile $updPeriod $duration $start $probe
+	ana_summarize $tmpDir $resultsFile $updPeriod $duration $start $probe 
     done
-
 }
 
 sec_run_attack_scenario() {
@@ -1118,6 +1131,23 @@ sec_run_attack_scenarios() {
 #    sec_create_protos_mlc
 
     for round in $(seq 1 $ANA_MEASURE_ROUNDS); do
+
+	if false; then
+	    local attacker="3 4 5 6 7 8"
+
+	    if false; then
+		local resultsFile="$(dirname $ANA_RESULTS_FILE)/$(ana_time_stamp)-recoveryVsEvilRoute"
+		for a in $attacker; do
+		    time sec_measure_attack_scenario 3 X X 3 $resultsFile $a XXX "1000 100$a XXX XXX XXX XXX 100$a" "evilRouteDropping=1 evilDescDropping=0 evilOgmDropping=0 evilOgmMetrics=0" 10 10
+		done
+	    fi
+	    if true; then
+		local resultsFile="$(dirname $ANA_RESULTS_FILE)/$(ana_time_stamp)-recoveryVsEvilMetric"
+		for a in $attacker; do
+		    time sec_measure_attack_scenario 3 X X 3 $resultsFile $a XXX "1000 100$a XXX XXX XXX XXX 100$a" "evilRouteDropping=1 evilDescDropping=0 evilOgmDropping=0 evilOgmMetrics=1" 30 30
+		done
+	    fi
+	fi
 
 	if true; then
 	    local losses="3 5 7 9 11 13 15"
@@ -1162,4 +1192,3 @@ sec_run_attack_scenarios() {
 	fi
     done
 }
-
