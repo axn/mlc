@@ -487,7 +487,7 @@ ana_summarize() {
 	local fECTime=$(cat $tmpDir/trace-c-attack.out  | awk -F'eTime=' '{print $2}'| cut -d' ' -f1 | head -c +5 )
 
 	FORMAT="%15s %3s %2s %8s  %5s %3s %5s %17s %7s %7s %7s %9s  %4s %10s %6s %3s  %4s %4s %6s %4s %4s %4s  %6s %8s %8s %8s %5s %8s %8s %8s  %11s %6s  %2s %2s %2s %2s %2s %2s  %5s %5s %5s %5s  %5s %5s %11s %11s"
-	FIELDS="start dur p revision  Links Rts Nodes linkKeys linkRsa linkDhm nodeRsa updPeriod  txq tp rtt ttl  CPU BCPU Memory idOI idSI idSL  outPps txPL outBps txBL inPps rxPL inBps rxBL  uptime lstDsc   aH bH cH hQ hL aN    lstSC fstEC lstEC fstSC   lstSA fstEA lstFailTime fstSuccTime"
+	FIELDS="start dur p revision  Links Rts Nodes linkKeys linkRsa linkDhm nodeRsa updPeriod  txq tp rtt ttl  CPU BCPU Memory idOI idSI idSL  outPps txPL outBps txBL inPps rxPL inBps rxBL  uptime lstDsc   aH bH cH hQ hL aN    lstSC fstEC lstEC fstSC   lstSA fstEA lstEA fstSA"
 	printf "$FORMAT \n" $FIELDS
 	[ -f $resultsFile ] || printf "$FORMAT \n" $FIELDS > $resultsFile
 	printf "$FORMAT \n" \
@@ -1102,6 +1102,7 @@ sec_measure_attack_scenario() {
     local attackerNodes="${8:-"^10[0-2][0-8]"}"
     local duration="${9:-$ANA_MEASURE_TIME}"
     local succeeds="${10:-10}"
+    local attackDuration=30
     
     local updPeriod=0
     local probes=$ANA_MEASURE_PROBES
@@ -1137,8 +1138,8 @@ sec_measure_attack_scenario() {
 	echo "aHops=$aHops bHops=$bHops cHops=$cHops lq=$lq aNode=$aNode" > $tmpDir/topo.out
 
 	echo "Starting Attack Measurement ping"
-	sec_ping_e2e $tmpDir/trace-a-attack 1009 1000 "mlc10[0,0][0-9]" 20 20 &
-	sec_ping_e2e $tmpDir/trace-c-attack 1029 1020 "mlc10[1,2][0-9]" 20 20 &
+	sec_ping_e2e $tmpDir/trace-a-attack 1009 1000 "mlc10[0,0][0-9]" $attackDuration $attackDuration &
+	sec_ping_e2e $tmpDir/trace-c-attack 1029 1020 "mlc10[1,2][0-9]" $attackDuration $attackDuration &
 	echo "Starting attacks"
 	sec_set_cmd "$attackerNodes" "attackedNodesDir=/$ANA_NODE_ATTACKED_DIR" 
 	wait
