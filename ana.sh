@@ -353,12 +353,21 @@ ana_bench_tcp_devMac() {
 
     local rxStats=$(tshark -r $outFile.tmp -qz "io,stat,$duration,eth.src!=$mac&&udp.port==$ANA_UDP_PORT" 2>/dev/null| tail -n2 |head -n1)
     local txStats=$(tshark -r $outFile.tmp -qz "io,stat,$duration,eth.src==$mac&&udp.port==$ANA_UDP_PORT" 2>/dev/null| tail -n2 |head -n1)
-    echo " \
+    if tshark -version 2>&1 | grep TShark | grep -e '1\.10\.6'; then
+	echo " \
+       rxP=$( echo "scale=2; $(echo $rxStats | awk '{print $10}')/$duration" | bc ) \
+       rxB=$( echo "scale=2; $(echo $rxStats | awk '{print $12}')/$duration" | bc ) \
+       txP=$( echo "scale=2; $(echo $txStats | awk '{print $10}')/$duration" | bc ) \
+       txB=$( echo "scale=2; $(echo $txStats | awk '{print $12}')/$duration" | bc ) \
+       " > $outFile
+    else
+	echo " \
        rxP=$( echo "scale=2; $(echo $rxStats | awk '{print $6}')/$duration" | bc ) \
        rxB=$( echo "scale=2; $(echo $rxStats | awk '{print $8}')/$duration" | bc ) \
        txP=$( echo "scale=2; $(echo $txStats | awk '{print $6}')/$duration" | bc ) \
        txB=$( echo "scale=2; $(echo $txStats | awk '{print $8}')/$duration" | bc ) \
        " > $outFile
+    fi
 
      cat $outFile
     echo "$(ana_time_stamp) ana_bench_devMac_owrt end"
@@ -467,25 +476,30 @@ ana_summarize() {
 	local aNode=$(cat $tmpDir/topo.out | awk -F'aNode=' '{print $2}'| cut -d' ' -f1)
 	
 
-	local lTime=$(cat $tmpDir/recover-trace.out | awk -F'lTime=' '{print $2}'| cut -d' ' -f1)
-	local fTime=$(cat $tmpDir/recover-trace.out | awk -F'fTime=' '{print $2}'| cut -d' ' -f1)
-	local sTime=$(cat $tmpDir/attack-trace.out | awk -F'sTime=' '{print $2}'| cut -d' ' -f1)
-	local eTime=$(cat $tmpDir/attack-trace.out | awk -F'eTime=' '{print $2}'| cut -d' ' -f1)
+	local lEATime=$(cat $tmpDir/trace-a-recover.out | awk -F'lTime=' '{print $2}'| cut -d' ' -f1 | head -c +5 )
+	local fSATime=$(cat $tmpDir/trace-a-recover.out | awk -F'fTime=' '{print $2}'| cut -d' ' -f1 | head -c +5 )
+	local lSATime=$(cat $tmpDir/trace-a-attack.out  | awk -F'sTime=' '{print $2}'| cut -d' ' -f1 | head -c +5 )
+	local fEATime=$(cat $tmpDir/trace-a-attack.out  | awk -F'eTime=' '{print $2}'| cut -d' ' -f1 | head -c +5 )
 
+	local lECTime=$(cat $tmpDir/trace-c-recover.out | awk -F'lTime=' '{print $2}'| cut -d' ' -f1 | head -c +5 )
+	local fSCTime=$(cat $tmpDir/trace-c-recover.out | awk -F'fTime=' '{print $2}'| cut -d' ' -f1 | head -c +5 )
+	local lSCTime=$(cat $tmpDir/trace-c-attack.out  | awk -F'sTime=' '{print $2}'| cut -d' ' -f1 | head -c +5 )
+	local fECTime=$(cat $tmpDir/trace-c-attack.out  | awk -F'eTime=' '{print $2}'| cut -d' ' -f1 | head -c +5 )
 
-	FORMAT="%16s %16s %8s %5s %9s   %6s %6s %6s %20s %8s %8s %8s %9s   %5s %10s %6s %3s   %4s %4s %6s %4s %4s %4s   %8s %8s %8s %8s  %8s %8s %8s %8s   %11s %6s   %2s %2s %2s %2s %2s %2s   %11s %11s %11s %11s "
-	FIELDS="start end duration probe revision  Links Routes Nodes linkKeys linkRsa linkDhm nodeRsa updPeriod  txq tp rtt ttl  CPU BCPU Memory idOI idSI idSL  outPps txPL outBps txBL inPps rxPL inBps rxBL  uptime lstDsc   aH bH cH hQ hL aN   lstFailTime fstSuccTime lstSuc fstErr"
+	FORMAT="%15s %3s %2s %8s  %5s %3s %5s %17s %7s %7s %7s %9s  %4s %10s %6s %3s  %4s %4s %6s %4s %4s %4s  %6s %8s %8s %8s %5s %8s %8s %8s  %11s %6s  %2s %2s %2s %2s %2s %2s  %5s %5s %5s %5s  %5s %5s %11s %11s"
+	FIELDS="start dur p revision  Links Rts Nodes linkKeys linkRsa linkDhm nodeRsa updPeriod  txq tp rtt ttl  CPU BCPU Memory idOI idSI idSL  outPps txPL outBps txBL inPps rxPL inBps rxBL  uptime lstDsc   aH bH cH hQ hL aN    lstSC fstEC lstEC fstSC   lstSA fstEA lstFailTime fstSuccTime"
 	printf "$FORMAT \n" $FIELDS
 	[ -f $resultsFile ] || printf "$FORMAT \n" $FIELDS > $resultsFile
 	printf "$FORMAT \n" \
-	    $start $(ana_time_stamp) ${duration:-"NA"} $probe ${rev:-"NA"} \
+	    $start ${duration:-"NA"} $probe ${rev:-"NA"} \
 	    ${links:-"NA"} ${routes:-"NA"} ${nodes:-"NA"} ${linkKeys:-"NA"} ${linkRsa:-"NA"} ${linkDhm:-"NA"} ${nodeRsa:-"NA"} ${updPeriod:-"NA"}  \
 	    ${txq:-"NA"} ${tpOL:-"NA"} ${rttL:-"NA"} ${ttlL:-"NA"} \
 	    ${cpOI:-"NA"} ${bmxCpu:-"NA"} ${mmOI:-"NA"} ${idOI:-"NA"} ${idSI:-"NA"} ${idSL:-"NA"} \
 	    ${txPI:-"NA"} ${txPL:-"NA"} ${txBI:-"NA"} ${txBL:-"NA"} ${rxPI:-"NA"} ${rxPL:-"NA"} ${rxBI:-"NA"} ${rxBL:-"NA"} \
 	    ${uptime:-"NA"} ${lstDsc:-"NA"} \
 	    ${aHops:-"NA"} ${bHops:-"NA"} ${cHops:-"NA"} ${hopLq:-"NA"} ${hopLl:-"NA"} ${aNode:-"NA"} \
-	    ${lTime:-"NA"} ${fTime:-"NA"} ${sTime:-"NA"} ${eTime:-"NA"} \
+	    ${lSCTime:-"NA"} ${fECTime:-"NA"} ${lECTime:-"NA"} ${fSCTime:-"NA"} \
+	    ${lSATime:-"NA"} ${fEATime:-"NA"} ${lEATime:-"NA"} ${fSATime:-"NA"} \
 	    | tee -a $resultsFile
 }
 
@@ -711,7 +725,7 @@ sec_create_protos_mlc() {
     local nodes=${1:-$ANA_NODES_DEF}
 
     local ANA_MLC_CMD="rm -rf /root/bmx7/*; mkdir -p /root/bmx7; cd /root/bmx7; ulimit -c 20000; \
-   $ANA_PROTO_CMD plugin=bmx7_evil.so nodeRsaKey=$ANA_NODE_KEY_LEN /keyPath=/etc/bmx7/rsa.$ANA_NODE_KEY_LEN $ANA_MAIN_OPTS maxDhmNeighs=$ANA_LINK_DHM_MAX $ANA_MLC_DEVS txBucketDrain=100 descRetryInterval=100 resolveIterations=10 \
+   $ANA_PROTO_CMD plugin=bmx7_evil.so nodeRsaKey=$ANA_NODE_KEY_LEN /keyPath=/etc/bmx7/rsa.$ANA_NODE_KEY_LEN $ANA_MAIN_OPTS maxDhmNeighs=$ANA_LINK_DHM_MAX $ANA_MLC_DEVS unsolicitedDescAdvs=0 txBucketDrain=100 descRetryInterval=100 resolveIterations=10 \
    > /root/bmx7/bmx7.log 2>&1 &"
 
     if [ "$nodes" = "0" ]; then
@@ -927,22 +941,19 @@ sec_get_dbItem() {
 
 sec_tcpdump() {
     local outFile=$1
-    local duration=${2:-$ANA_MEASURE_TIME}
-    local delay=${3:-$ANA_PROBE_DELAY_TIME}
-    local opts="$4"
+    local delay=${2:-$ANA_PROBE_DELAY_TIME}
+    local opts="$3"
 
     echo "sec_tcpdump $$"
 
     sleep $delay
-    echo timeout $duration tcpdump -nve -i $mlc_bridge_prefix$ANA_MBR -s 200 $( [ "$opts" ] && echo "$opts" )  > $outFile 2>&1
     tcpdump -nvvve -i $mlc_bridge_prefix$ANA_MBR -s 200 -w $outFile $( [ "$opts" ] && echo "$opts" )
-#    tshard -a duration:$duration -i $mlc_bridge_prefix$ANA_MBR -s 200 -w $outFile
 }
 
 
 sec_tcpdump_filter() {
     local inFile=${1:-"/tmp/test"}
-    local patterns=${2:-"mlc1000"}
+    local pattern=${2:-"mlc1000"}
     local grepCond=${3:-"v"}
     local grepStart=${4:-"00:00:00.000000"}
     local grepEnd=${5:-"99:99:99.999999"}
@@ -952,11 +963,13 @@ sec_tcpdump_filter() {
     local inData="$(tcpdump -r $inFile -nevv -ttttt 2>/dev/null | sed -n "/$grepStart/,\$p" | sed "/$grepEnd/q" | grep icmp6)"
 #   local inData="$(tcpdump -r $inFile -nevv -ttttt 2>/dev/null | sed "0,/$grepStart/d" | grep icmp6)"
     local p=
+    local grepMac=
 
-    echo "Filter $grepCond results inFile=$inFile patterns=$patterns  grepStart=$grepStart grepEnd=$grepEnd"
+    echo "Filter $grepCond results inFile=$inFile pattern=$pattern  grepStart=$grepStart grepEnd=$grepEnd"
 
-    for p in $patterns; do
-	local grepMac="$(sec_get_dbItem $p $outField $inField)"
+#   for p in $pattern; do
+#	local grepMac="$(sec_get_dbItem $p $outField $inField)"
+    for grepMac in $(sec_get_dbItem $pattern $outField $inField); do
 	inData="$(echo "$inData" | grep -$grepCond " > $grepMac")"
     done
     echo "$inData"
@@ -981,10 +994,11 @@ sec_tcpdump_translate() {
 sec_ping_e2e() {
 
     local outFile=${1:-"/tmp/ana.trace"}
-    local duration=${2:-$ANA_MEASURE_TIME}
-    local succeeds=${3:-"10"}
-    local srcMlcId=${4:-"1009"}
-    local dstMlcId=${5:-"1000"}
+    local srcMlcId=${2:-"1009"}
+    local dstMlcId=${3:-"1000"}
+    local trustSet=${4:-"mlc100[0,0][0-9]"}
+    local duration=${5:-$ANA_MEASURE_TIME}
+    local succeeds=${6:-"10"}
     
     local srcMlcIp=$(sec_get_dbItem "mlc${srcMlcId}" "mlcIp" "name")
     local srcNodeIp=$(sec_get_dbItem "mlc${srcMlcId}" "ip6"   "name")
@@ -994,16 +1008,22 @@ sec_ping_e2e() {
     rm -f $outFile
 
     if [ "$srcMlcIp" ] && [ "$srcNodeIp" ] && [ "$dstNodeIp" ] ; then
-
-	sec_tcpdump $outFile $duration 0 "port 6270 or (icmp6 and src $srcNodeIp and dst $dstNodeIp and ip6[40]=128 and ip6[7]<=30)" &
+	local tcpHostMatch="icmp6 and src $srcNodeIp and dst $dstNodeIp"
+	local tcpDumpMatch="($tcpHostMatch and ip6[40]=128 and ip6[7]<=30)"
+	sec_tcpdump $outFile 0 "port 6270 or $tcpDumpMatch" &
 	sleep 0.1
-	time $ANA_SSH root@$srcMlcIp "timeout $duration sh -c \"while date && echo newEchoRound && ! ping6 -t 30 -n -i 0.1 $dstNodeIp; do sleep 0.1; done\"" &
+	time $ANA_SSH root@$srcMlcIp "sh -c \"while date && echo newEchoRound && ! ping6 -t 30 -n -i 0.1 $dstNodeIp; do sleep 0.1; done\"" &
 	sleep 1.5
-	timeout $duration tcpdump -nvei veth${dstMlcId}_$ANA_MBR -c $(((10 * $succeeds))) "icmp6 and src $srcNodeIp and dst $dstNodeIp and ip6[40]<=128 and ip6[7]<=30"
-	kill $(ps aux | grep -v grep | grep -v timeout | grep -e "ping6 -t 30" | awk '{print $2}')
+	timeout $duration tcpdump -nvei veth${dstMlcId}_$ANA_MBR -c $(((10 * $succeeds))) "$tcpDumpMatch"
+	ps aux | grep -e tcpdump -e ping6
+	echo "kill ping6 $dstNodeIp"
+	kill $(ps aux |grep -v grep |grep -e "ping6 -t 30" |grep -e "$dstNodeIp" |awk '{print $2}')
 	sync
-	killall -15 tcpdump
+	echo "kill tcpdump $tcpHostMatch"
+	kill $(ps aux |grep -v grep |grep -e "tcpdump" |grep -e "$tcpHostMatch" |awk '{print $2}')
+#	killall -15 tcpdump
 	wait
+	sync
 	echo "$outFile :"
 	ls -l $outFile
 #	tshark -r $outFile
@@ -1013,10 +1033,11 @@ sec_ping_e2e() {
 #	sec_tcpdump_translate $outFile.all | less
 
 	echo "Last failed packet:"
-	sec_tcpdump_filter $outFile "$( for s in $(seq $dstMlcId $srcMlcId); do echo -n "mlc$s "; done )" v > $outFile.l
+	sec_tcpdump_filter $outFile $trustSet v > $outFile.l
+	echo "Last failed packet done"
 	local lCatched="$(sec_tcpdump_translate $outFile.l | grep -v "Filter" | tail -n1)"
 	local lFullTime="$( echo $lCatched | cut -d' ' -f1 )"
-	local lTime="$( echo "scale=2; ( ( $(echo "$lCatched" | cut -d' ' -f1 | cut -d':' -f2) * 60 )   +   $(echo "$lCatched" | cut -d' ' -f1 | cut -d':' -f3) )" | bc )"
+	local lTime="$( echo "scale=2; ( ( $(echo "$lCatched" | cut -d' ' -f1 | cut -d':' -f2) * 60 )   +   $(echo "$lCatched" | cut -d' ' -f1 | cut -d':' -f3) )" | bc 2>/dev/null )"
 	local lSeq="$(echo "$lCatched"  | awk -F'seq ' '{print $2}' )"
 	local lHlim="$(echo "$lCatched"  | awk -F'hlim ' '{print $2}' | cut -d ',' -f1 )"
 	local lTxNode="$(echo "$lCatched" | cut -d' ' -f2)"
@@ -1025,17 +1046,17 @@ sec_ping_e2e() {
 	echo "First succeeded packet:"
 	sec_tcpdump_filter $outFile "mlc${dstMlcId}" e $lFullTime > $outFile.f
 	local fCatched="$(sec_tcpdump_translate $outFile.f | grep -v "Filter" | head -n1)"
-	local fTime="$( echo "scale=3; ( ( $(echo "$fCatched" | cut -d' ' -f1 | cut -d':' -f2) * 60 )   +   $(echo "$fCatched" | cut -d' ' -f1 | cut -d':' -f3) )" | bc )"
+	local fTime="$( echo "scale=3; ( ( $(echo "$fCatched" | cut -d' ' -f1 | cut -d':' -f2) * 60 )   +   $(echo "$fCatched" | cut -d' ' -f1 | cut -d':' -f3) )" | bc 2>/dev/null )"
 	local fSeq="$(echo "$fCatched"  | awk -F'seq ' '{print $2}' )"
 	local fHlim="$(echo "$fCatched"  | awk -F'hlim ' '{print $2}' | cut -d ',' -f1 )"
 	local fTxNode="$(echo "$fCatched" | cut -d' ' -f2)"
 	local fRxNode="$(echo "$fCatched" | cut -d' ' -f4)"
 
 	echo "first Error packet:"
-	sec_tcpdump_filter $outFile "$( for s in $(seq $dstMlcId $srcMlcId); do echo -n "mlc$s "; done )" v > $outFile.e
+	sec_tcpdump_filter $outFile $trustSet v > $outFile.e
 	local eCatched="$(sec_tcpdump_translate $outFile.e | grep -v "Filter" | head -n1)"
 	local eFullTime="$( echo $eCatched | cut -d' ' -f1 )"
-	local eTime="$( echo "scale=2; ( ( $(echo "$eCatched" | cut -d' ' -f1 | cut -d':' -f2) * 60 )   +   $(echo "$eCatched" | cut -d' ' -f1 | cut -d':' -f3) )" | bc )"
+	local eTime="$( echo "scale=2; ( ( $(echo "$eCatched" | cut -d' ' -f1 | cut -d':' -f2) * 60 )   +   $(echo "$eCatched" | cut -d' ' -f1 | cut -d':' -f3) )" | bc 2>/dev/null )"
 	local eSeq="$(echo "$eCatched"  | awk -F'seq ' '{print $2}' )"
 	local eHlim="$(echo "$eCatched"  | awk -F'hlim ' '{print $2}' | cut -d ',' -f1 )"
 	local eTxNode="$(echo "$eCatched" | cut -d' ' -f2)"
@@ -1044,7 +1065,7 @@ sec_ping_e2e() {
 	echo "last Succeeded packet:"
 	sec_tcpdump_filter $outFile "mlc${dstMlcId}" e "" $eFullTime > $outFile.s
 	local sCatched="$(sec_tcpdump_translate $outFile.s | grep -v "Filter" | tail -n1)"
-	local sTime="$( echo "scale=3; ( ( $(echo "$sCatched" | cut -d' ' -f1 | cut -d':' -f2) * 60 )   +   $(echo "$sCatched" | cut -d' ' -f1 | cut -d':' -f3) )" | bc )"
+	local sTime="$( echo "scale=3; ( ( $(echo "$sCatched" | cut -d' ' -f1 | cut -d':' -f2) * 60 )   +   $(echo "$sCatched" | cut -d' ' -f1 | cut -d':' -f3) )" | bc 2>/dev/null )"
 	local sSeq="$(echo "$sCatched"  | awk -F'seq ' '{print $2}' )"
 	local sHlim="$(echo "$sCatched"  | awk -F'hlim ' '{print $2}' | cut -d ',' -f1 )"
 	local sTxNode="$(echo "$sCatched" | cut -d' ' -f2)"
@@ -1056,7 +1077,7 @@ lTime=$lTime lSeq=$lSeq lHlim=$lHlim lTxNode=$lTxNode lRxNode=$lRxNode   \
 fTime=$fTime fSeq=$fSeq fHlim=$fHlim fTxNode=$fTxNode fRxNode=$fRxNode   \
 sTime=$sTime sSeq=$sSeq sHlim=$sHlim sTxNode=$sTxNode sRxNode=$sRxNode   \
 eTime=$eTime eSeq=$eSeq eHlim=$eHlim eTxNode=$eTxNode eRxNode=$eRxNode   \
-" > $outFile.out
+" | tee $outFile.out
     fi
 }
 
@@ -1077,7 +1098,7 @@ sec_measure_attack_scenario() {
     local lq=${4:-"3"}
     local resultsFile=${5:-$ANA_RESULTS_FILE}
     local aNode=${6:-"X"}
-    local trusterNodes="${7:-"^1000$"}"
+    local trusterNodes="${7:-"^10[0,2]0$"}"
     local attackerNodes="${8:-"^10[0-2][0-8]"}"
     local duration="${9:-$ANA_MEASURE_TIME}"
     local succeeds="${10:-10}"
@@ -1116,7 +1137,8 @@ sec_measure_attack_scenario() {
 	echo "aHops=$aHops bHops=$bHops cHops=$cHops lq=$lq aNode=$aNode" > $tmpDir/topo.out
 
 	echo "Starting Attack Measurement ping"
-	sec_ping_e2e $tmpDir/attack-trace 20 20 &
+	sec_ping_e2e $tmpDir/trace-a-attack 1009 1000 "mlc10[0,0][0-9]" 20 20 &
+	sec_ping_e2e $tmpDir/trace-c-attack 1029 1020 "mlc10[1,2][0-9]" 20 20 &
 	echo "Starting attacks"
 	sec_set_cmd "$attackerNodes" "attackedNodesDir=/$ANA_NODE_ATTACKED_DIR" 
 	wait
@@ -1125,7 +1147,8 @@ sec_measure_attack_scenario() {
 #	sleep 2
 	echo
 	echo "Starting Recovery Measurement ping"
-	sec_ping_e2e $tmpDir/recover-trace $duration $succeeds  &
+	sec_ping_e2e $tmpDir/trace-a-recover 1009 1000 "mlc10[0,0][0-9]" $duration $succeeds  &
+	sec_ping_e2e $tmpDir/trace-c-recover 1029 1020 "mlc10[1,2][0-9]" $duration $succeeds  &
 	sec_set_cmd "$trusterNodes" "trustedNodesDir=/$ANA_NODE_TRUSTED_DIR"
 
 	true && (
@@ -1156,6 +1179,8 @@ sec_run_attack_scenarios() {
 
 #    sec_init_attack_scenarios
 #    sec_create_protos_mlc
+    sec_create_protos_mlc
+    sec_get_nodeDb
     
     sec_prepare_trust
 
@@ -1180,8 +1205,9 @@ sec_run_attack_scenarios() {
 	    fi
 	fi
 
-	if false; then
+	if true; then
 	    sec_prepare_attacks
+ 	    sec_set_cmd 100${dfltAHops} "evilDescDropping=1"
  	    sec_set_cmd 102${dfltCHops} "evilDescDropping=1"
 	    local losses="3 5 7 9 11 13 15"
 
@@ -1195,19 +1221,32 @@ sec_run_attack_scenarios() {
 	    local losses="3 5 7 9 11 13 15"
 	    local losses="3 5 9 13"
 	    local losses="3 9 13"
-	    local losses="3 13"
+#	    local losses="3 13"
+#	    local losses="3"
 
 	    for l in $losses; do
 
 		local params="1 2 3 4 5 6 7 8 X"
-		local params="1 3 8 X"
+#		local params="1 3 8 X"
+#		local params="8"
 
-		if false; then
+		if true; then
 		    local resultsFile="$(dirname $ANA_RESULTS_FILE)/$(ana_time_stamp)-recoveryVsTrustHops-$l"
 		    for p in $params; do
 			sec_prepare_attacks
+ 			sec_set_cmd 100${p}         "evilDescDropping=1"
  			sec_set_cmd 102${dfltCHops} "evilDescDropping=1"
 			time sec_measure_attack_scenario $p $dfltBHops $dfltCHops $l $resultsFile
+		    done
+		fi
+
+		if true; then
+		    local resultsFile="$(dirname $ANA_RESULTS_FILE)/$(ana_time_stamp)-recoveryVsSuppHops-$l"
+		    for p in $params; do
+			sec_prepare_attacks
+ 			sec_set_cmd 100${dfltAHops} "evilDescDropping=1"
+ 			sec_set_cmd 102${dfltCHops} "evilDescDropping=1"
+			time sec_measure_attack_scenario $dfltAHops $p $dfltCHops $l $resultsFile
 		    done
 		fi
 
@@ -1215,19 +1254,12 @@ sec_run_attack_scenarios() {
 		    local resultsFile="$(dirname $ANA_RESULTS_FILE)/$(ana_time_stamp)-recoveryVsEvilHops-$l"
 		    for p in $params; do
 			sec_prepare_attacks
- 			sec_set_cmd 102${p} "evilDescDropping=1"
+ 			sec_set_cmd 100${dfltAHops} "evilDescDropping=1"
+ 			sec_set_cmd 102${p}         "evilDescDropping=1"
 			time sec_measure_attack_scenario $dfltAHops $dfltBHops $p $l $resultsFile
 		    done
 		fi
 		
-		if false; then
-		    local resultsFile="$(dirname $ANA_RESULTS_FILE)/$(ana_time_stamp)-recoveryVsSuppHops-$l"
-		    for p in $params; do
-			sec_prepare_attacks
- 			sec_set_cmd 102${dfltCHops} "evilDescDropping=1"
-			time sec_measure_attack_scenario $dfltAHops $p $dfltCHops $l $resultsFile
-		    done
-		fi
 	    done
 	fi
     done
