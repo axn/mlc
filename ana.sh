@@ -481,13 +481,18 @@ ana_summarize() {
 	local lSATime=$(cat $tmpDir/trace-a-attack.out  | awk -F'sTime=' '{print $2}'| cut -d' ' -f1 | head -c +5 )
 	local fEATime=$(cat $tmpDir/trace-a-attack.out  | awk -F'eTime=' '{print $2}'| cut -d' ' -f1 | head -c +5 )
 
+	local lEBTime=$(cat $tmpDir/trace-b-recover.out | awk -F'lTime=' '{print $2}'| cut -d' ' -f1 | head -c +5 )
+	local fSBTime=$(cat $tmpDir/trace-b-recover.out | awk -F'fTime=' '{print $2}'| cut -d' ' -f1 | head -c +5 )
+	local lSBTime=$(cat $tmpDir/trace-b-attack.out  | awk -F'sTime=' '{print $2}'| cut -d' ' -f1 | head -c +5 )
+	local fEBTime=$(cat $tmpDir/trace-b-attack.out  | awk -F'eTime=' '{print $2}'| cut -d' ' -f1 | head -c +5 )
+
 	local lECTime=$(cat $tmpDir/trace-c-recover.out | awk -F'lTime=' '{print $2}'| cut -d' ' -f1 | head -c +5 )
 	local fSCTime=$(cat $tmpDir/trace-c-recover.out | awk -F'fTime=' '{print $2}'| cut -d' ' -f1 | head -c +5 )
 	local lSCTime=$(cat $tmpDir/trace-c-attack.out  | awk -F'sTime=' '{print $2}'| cut -d' ' -f1 | head -c +5 )
 	local fECTime=$(cat $tmpDir/trace-c-attack.out  | awk -F'eTime=' '{print $2}'| cut -d' ' -f1 | head -c +5 )
 
-	FORMAT="%15s %3s %2s %8s  %5s %3s %5s %17s %7s %7s %7s %9s  %4s %10s %6s %3s  %4s %4s %6s %4s %4s %4s  %6s %8s %8s %8s %5s %8s %8s %8s  %11s %6s  %2s %2s %2s %2s %2s %2s  %5s %5s %5s %5s  %5s %5s %11s %11s"
-	FIELDS="start dur p revision  Links Rts Nodes linkKeys linkRsa linkDhm nodeRsa updPeriod  txq tp rtt ttl  CPU BCPU Memory idOI idSI idSL  outPps txPL outBps txBL inPps rxPL inBps rxBL  uptime lstDsc   aH bH cH hQ hL aN    lstSC fstEC lstEC fstSC   lstSA fstEA lstEA fstSA"
+	FORMAT="%15s %3s %2s %8s  %5s %3s %5s %17s %7s %7s %7s %9s  %4s %10s %6s %3s  %4s %4s %6s %4s %4s %4s  %6s %8s %8s %8s %5s %8s %8s %8s  %11s %6s  %2s %2s %2s %2s %2s %2s  %5s %5s %5s %5s  %5s %5s %5s %5s  %5s %5s %5s %5s"
+	FIELDS="start dur p revision  Links Rts Nodes linkKeys linkRsa linkDhm nodeRsa updPeriod  txq tp rtt ttl  CPU BCPU Memory idOI idSI idSL  outPps txPL outBps txBL inPps rxPL inBps rxBL  uptime lstDsc   aH bH cH hQ hL aN    lstSC fstEC lstEC fstSC   lstSA fstEA lstEA fstSA   lstSB fstEB lstEB fstSB"
 	printf "$FORMAT \n" $FIELDS
 	[ -f $resultsFile ] || printf "$FORMAT \n" $FIELDS > $resultsFile
 	printf "$FORMAT \n" \
@@ -500,6 +505,7 @@ ana_summarize() {
 	    ${aHops:-"NA"} ${bHops:-"NA"} ${cHops:-"NA"} ${hopLq:-"NA"} ${hopLl:-"NA"} ${aNode:-"NA"} \
 	    ${lSCTime:-"NA"} ${fECTime:-"NA"} ${lECTime:-"NA"} ${fSCTime:-"NA"} \
 	    ${lSATime:-"NA"} ${fEATime:-"NA"} ${lEATime:-"NA"} ${fSATime:-"NA"} \
+	    ${lSBTime:-"NA"} ${fEBTime:-"NA"} ${lEBTime:-"NA"} ${fSBTime:-"NA"} \
 	    | tee -a $resultsFile
 }
 
@@ -1103,6 +1109,7 @@ sec_measure_attack_scenario() {
     local duration="${9:-$ANA_MEASURE_TIME}"
     local succeeds="${10:-10}"
     local attackDuration=30
+    local srcNode=1009
     
     local updPeriod=0
     local probes=$ANA_MEASURE_PROBES
@@ -1139,8 +1146,9 @@ sec_measure_attack_scenario() {
 	echo "aHops=$aHops bHops=$bHops cHops=$cHops lq=$lq aNode=$aNode" > $tmpDir/topo.out
 
 	echo "Starting Attack Measurement ping"
-	sec_ping_e2e $tmpDir/trace-a-attack 1009 1000 "mlc10[0,0][0-9]" $attackDuration $attackDuration &
-	sec_ping_e2e $tmpDir/trace-c-attack 1029 1020 "mlc10[1,2][0-9]" $attackDuration $attackDuration &
+	sec_ping_e2e $tmpDir/trace-a-attack ${srcNode:-1009} 1000 "mlc10[0,0][0-9]" $attackDuration $attackDuration &
+	sec_ping_e2e $tmpDir/trace-b-attack ${srcNode:-1019} 1010 "mlc10[0-2][0-9]" $attackDuration $attackDuration &
+	sec_ping_e2e $tmpDir/trace-c-attack ${srcNode:-1029} 1020 "mlc10[1,2][0-9]" $attackDuration $attackDuration &
 	echo "Starting attacks"
 	sec_set_cmd "$attackerNodes" "attackedNodesDir=/$ANA_NODE_ATTACKED_DIR" 
 	wait
@@ -1149,8 +1157,9 @@ sec_measure_attack_scenario() {
 #	sleep 2
 	echo
 	echo "Starting Recovery Measurement ping"
-	sec_ping_e2e $tmpDir/trace-a-recover 1009 1000 "mlc10[0,0][0-9]" $duration $succeeds  &
-	sec_ping_e2e $tmpDir/trace-c-recover 1029 1020 "mlc10[1,2][0-9]" $duration $succeeds  &
+	sec_ping_e2e $tmpDir/trace-a-recover ${srcNode:-1009} 1000 "mlc10[0,0][0-9]" $duration $succeeds  &
+	sec_ping_e2e $tmpDir/trace-b-recover ${srcNode:-1019} 1010 "mlc10[0-2][0-9]" $duration $succeeds  &
+	sec_ping_e2e $tmpDir/trace-c-recover ${srcNode:-1029} 1020 "mlc10[1,2][0-9]" $duration $succeeds  &
 	sec_set_cmd "$trusterNodes" "trustedNodesDir=/$ANA_NODE_TRUSTED_DIR"
 
 	true && (
@@ -1212,6 +1221,7 @@ sec_run_attack_scenarios() {
  	    sec_set_cmd 100${dfltAHops} "evilDescDropping=1"
  	    sec_set_cmd 102${dfltCHops} "evilDescDropping=1"
 	    local losses="3 5 7 9 11 13 15"
+#	    local losses="3"
 
 	    local resultsFile="$(dirname $ANA_RESULTS_FILE)/$(ana_time_stamp)-recoveryVsLoss"
 	    for l in $losses; do
