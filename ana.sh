@@ -1122,6 +1122,7 @@ sec_measure_attack_scenario() {
 	local tmpDir="/tmp/ana.tmp.$start"
 	mkdir -p $tmpDir
 	rm $tmpDir/*
+	killall -9 tcpdump
 
 	mlc_net_flush
 	sec_set_cmd "" "flushAll trustedNodesDir=- attackedNodesDir=-"
