@@ -731,7 +731,7 @@ sec_create_protos_mlc() {
     local nodes=${1:-$ANA_NODES_DEF}
 
     local ANA_MLC_CMD="rm -rf /root/bmx7/*; mkdir -p /root/bmx7; cd /root/bmx7; ulimit -c 20000; \
-   $ANA_PROTO_CMD plugin=bmx7_evil.so nodeRsaKey=$ANA_NODE_KEY_LEN /keyPath=/etc/bmx7/rsa.$ANA_NODE_KEY_LEN $ANA_MAIN_OPTS maxDhmNeighs=$ANA_LINK_DHM_MAX $ANA_MLC_DEVS unsolicitedDescAdvs=0 txBucketDrain=100 descRetryInterval=100 resolveIterations=10 \
+   $ANA_PROTO_CMD plugin=bmx7_evil.so nodeRsaKey=$ANA_NODE_KEY_LEN /keyPath=/etc/bmx7/rsa.$ANA_NODE_KEY_LEN $ANA_MAIN_OPTS maxDhmNeighs=$ANA_LINK_DHM_MAX $ANA_MLC_DEVS unsolicitedDescAdvs=1 txBucketDrain=100 descRetryInterval=100 resolveIterations=10 \
    > /root/bmx7/bmx7.log 2>&1 &"
 
     if [ "$nodes" = "0" ]; then
