@@ -51,9 +51,11 @@ ANA_DST_SYS=""
 ANA_E2E_DST=mlc1003
 ANA_E2E_SRC4=10.0.10.0
 
-ANA_PING_DEADLINE=20
 ANA_STABILIZE_TIME=120
 ANA_MEASURE_TIME=25
+ANA_ATTACK_TIME=41
+ANA_SUCCEEDS_TIME=10
+
 ANA_MEASURE_ROUNDS=2
 ANA_MEASURE_PROBES=10 #10
 ANA_MEASURE_GAP=2
@@ -1110,9 +1112,10 @@ sec_measure_attack_scenario() {
     local bTrusteds="${10:-"mlc10[0-2][0-9]"}"
     local cTrusteds="${11:-"mlc10[1,2][0-9]"}"
 
-    local duration="${12:-$ANA_MEASURE_TIME}"
-    local succeeds="${13:-10}"
-    local attackDuration=30
+    local duration="$ANA_MEASURE_TIME"
+    local attackDuration="$ANA_ATTACK_TIME"
+    local succeeds="$ANA_SUCCEEDS_TIME"
+
     local srcNode=1009
     
     local updPeriod=0
@@ -1201,22 +1204,26 @@ sec_run_attack_scenarios() {
     for round in $(seq 1 $ANA_MEASURE_ROUNDS); do
 	if true; then
 
-	    local xPositions="5 6 7 8 4 3 2 1"
 	    local params="1 2 3 4 5 6 7 8"
-	    for x in $xPositions; do
-		if false; then
-		    local resultsFile="$(dirname $ANA_RESULTS_FILE)/$(ana_time_stamp)-recoveryVsEvilRoute-$x"
-		    sec_prepare_attacks 1020 100[0-8] XXX XXX 1000 102[0-8] "evilRouteDropping=1 evilDescDropping=0 evilOgmDropping=0 evilOgmMetrics=0"
-		    for p in $prams; do
-			time sec_measure_attack_scenario $x X $p 3 $resultsFile X XXX 10[0,2][0-8] 
-		    done
-		fi
 
+	    local xPositions="1 5 7"
+	    for x in $xPositions; do
 		if true; then
 		    local resultsFile="$(dirname $ANA_RESULTS_FILE)/$(ana_time_stamp)-recoveryVsEvilMetric-$x"
 		    sec_prepare_attacks 1020 100[0-8] XXX XXX 1000 102[0-8] "evilRouteDropping=1 evilDescDropping=0 evilOgmDropping=0 evilOgmMetrics=1"
 		    for p in $params; do
 			time sec_measure_attack_scenario 8 X $p 3 $resultsFile $x XXX 10[0,2]$x "mlc100[0-9] -e name=mlc102[0-$((($x - 1)))]" "mlc10[0-2][0-9]" "mlc102[0-9] -e name=mlc100[0-$((($x - 1)))]"
+		    done
+		fi
+	    done
+
+	    local xPositions="8 5 2"
+	    for x in $xPositions; do
+		if true; then
+		    local resultsFile="$(dirname $ANA_RESULTS_FILE)/$(ana_time_stamp)-recoveryVsEvilRoute-$x"
+		    sec_prepare_attacks 1020 100[0-8] XXX XXX 1000 102[0-8] "evilRouteDropping=1 evilDescDropping=0 evilOgmDropping=0 evilOgmMetrics=0"
+		    for p in $params; do
+			time sec_measure_attack_scenario $x X $p 3 $resultsFile X XXX 10[0,2][0-8] 
 		    done
 		fi
 	    done
