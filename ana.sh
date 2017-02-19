@@ -380,10 +380,12 @@ ana_bmx_stat_ip4() {
     local dstIp=$1
     local outFile1=$2
     local outFile2=$3
+    local outFile3=$4
     
     echo "$(ana_time_stamp) ana_bmx_stat_ip4 begin"
     $ANA_SSH root@$dstIp "bmx7 -c list=status" > $outFile1
     $ANA_SSH root@$dstIp "bmx7 -c list=links"  > $outFile2
+    $ANA_SSH root@$dstIp "bmx7 -c p s s /r=1 s i /r=1 traffic=eth1 s l /r=1 s o s o /r=1 s k /r=1 descriptions "  > $outFile3
     echo "$(ana_time_stamp) ana_bmx_stat_ip4 end"
 }
 
@@ -524,9 +526,11 @@ ana_measure_ovhd_owrt() {
     local start=$(ana_time_stamp)
     mkdir -p $(dirname $resultsFile)
 
-    local tmpDir="$ANA_TMP_DIR/ana.tmp.$start"
+    mv /tmp/ana.tmp.* $ANA_TMP_DIR/
+    sync
+    local tmpDir="/tmp/ana.tmp.$start"
     mkdir -p $tmpDir
-    rm $tmpDir/*
+    rm -f $tmpDir/*
 
     if [ "$updPeriod" != "0" ]; then
 	local longDuration=$((( (($duration + $ANA_PROBE_SAFE_TIME) * 2 * $probes) + $ANA_MEASURE_GAP  )))
@@ -563,7 +567,7 @@ ana_measure_ovhd_owrt() {
     echo "$(ana_time_stamp) waiting for finished descUpdates ... "
     wait
     echo "$(ana_time_stamp) done"
-
+    mv /tmp/ana.tmp.* $ANA_TMP_DIR/
 }
 
 
@@ -1129,10 +1133,12 @@ sec_measure_attack_scenario() {
     for probe in $(seq 1 $probes); do
 
 	local start=$(ana_time_stamp)
-
-	local tmpDir="$ANA_TMP_DIR/ana.tmp.$start"
+	
+	mv /tmp/ana.tmp.* $ANA_TMP_DIR/
+	sync
+	local tmpDir="/tmp/ana.tmp.$start"
 	mkdir -p $tmpDir
-	rm $tmpDir/*
+	rm -f $tmpDir/*
 	killall -9 tcpdump
 
 	mlc_net_flush
@@ -1158,20 +1164,22 @@ sec_measure_attack_scenario() {
 	wait
 
 
-#	sleep 2
-	echo
-	echo "Starting Recovery Measurement ping"
-	sec_ping_e2e $tmpDir/trace-a-recover ${srcNode:-1009} 1000 "$aTrusteds" $duration $succeeds  &
-	sec_ping_e2e $tmpDir/trace-b-recover ${srcNode:-1019} 1010 "$bTrusteds" $duration $succeeds  &
-	sec_ping_e2e $tmpDir/trace-c-recover ${srcNode:-1029} 1020 "$cTrusteds" $duration $succeeds  &
-	sec_set_cmd "$trusterNodes" "trustedNodesDir=/$ANA_NODE_TRUSTED_DIR"
+	if echo $trusterNodes | grep -q 10; then
+	    #	sleep 2
+	    echo
+	    echo "Starting Recovery Measurement ping"
+	    sec_ping_e2e $tmpDir/trace-a-recover ${srcNode:-1009} 1000 "$aTrusteds" $duration $succeeds  &
+	    sec_ping_e2e $tmpDir/trace-b-recover ${srcNode:-1019} 1010 "$bTrusteds" $duration $succeeds  &
+	    sec_ping_e2e $tmpDir/trace-c-recover ${srcNode:-1029} 1020 "$cTrusteds" $duration $succeeds  &
+	    sec_set_cmd "$trusterNodes" "trustedNodesDir=/$ANA_NODE_TRUSTED_DIR"
+	fi
 
 	true && (
 	    echo "$(ana_time_stamp) bench started"
 #	    ana_bench_top_owrt   $tmpDir/topOI.out 20 0 &
 	    ana_bench_tcp_devMac $tmpDir/tcpOI.out 20 0 veth1000_1 $(sec_get_dbItem mlc1000 mac name) &
 	    ana_bench_top_sys    $tmpDir/topSI.out 20 0 &
-	    ana_bmx_stat_ip4   10.0.10.9 $tmpDir/bmxOI.out $tmpDir/bmlOI.out &
+	    ana_bmx_stat_ip4   10.0.10.9 $tmpDir/bmxOI.out $tmpDir/bmlOI.out $tmpDir/bmxAll.out &
 	    wait
 	    echo "$(ana_time_stamp) bench finished"
 	)
@@ -1179,6 +1187,7 @@ sec_measure_attack_scenario() {
 	wait
 	ana_summarize $tmpDir $resultsFile $updPeriod $duration $start $probe 
     done
+    mv /tmp/ana.tmp.* $ANA_TMP_DIR/
 }
 
 sec_run_attack_scenario() {
