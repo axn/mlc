@@ -5,7 +5,8 @@ set +x
 mlc_cpu_idle_assumption=35
 #set -x
 
-ANA_MLC_DIR="/home/neumann/mlc-public.git"
+ANA_MLC_DIR="$(pwd)"
+ANA_TMP_DIR="$ANA_MLC_DIR/ana/tmp"
 ANA_SSH="$mlc_ssh -i /home/neumann/.ssh/id_rsa "
 ANA_OWRT_DIR="/home/neumann/openwrt/openwrt-15.05.git/bin/ar71xx/packages/routing"
 ANA_OWRT_DIR="/home/neumann/lede/lede-source.git/bin/packages/mips_24kc/routing"
@@ -521,9 +522,7 @@ ana_measure_ovhd_owrt() {
     local start=$(ana_time_stamp)
     mkdir -p $(dirname $resultsFile)
 
-#   rm -rf /tmp/ana.tmp.*
-#   local tmpDir=$(mktemp -d /tmp/ana.tmp.XXXXXXXXXX)
-    local tmpDir="/tmp/ana.tmp.$start"
+    local tmpDir="$ANA_TMP_DIR/ana.tmp.$start"
     mkdir -p $tmpDir
     rm $tmpDir/*
 
@@ -999,7 +998,7 @@ sec_tcpdump_translate() {
 
 sec_ping_e2e() {
 
-    local outFile=${1:-"/tmp/ana.trace"}
+    local outFile=${1:-"$ANA_TMP_DIR/ana.trace"}
     local srcMlcId=${2:-"1009"}
     local dstMlcId=${3:-"1000"}
     local trustSet=${4:-"mlc100[0,0][0-9]"}
@@ -1128,10 +1127,7 @@ sec_measure_attack_scenario() {
 
 	local start=$(ana_time_stamp)
 
-#	rm -rf /tmp/ana.tmp.*
-#	mv /tmp/ana.tmp.* /tmp/ana.last
-#	local tmpDir=$(mktemp -d /tmp/ana.tmp.XXXXXXXXXX)
-	local tmpDir="/tmp/ana.tmp.$start"
+	local tmpDir="$ANA_TMP_DIR/ana.tmp.$start"
 	mkdir -p $tmpDir
 	rm $tmpDir/*
 	killall -9 tcpdump
@@ -1204,10 +1200,11 @@ sec_run_attack_scenarios() {
     for round in $(seq 1 $ANA_MEASURE_ROUNDS); do
 	if true; then
 
-	    local aPositions="8 6 4 3 1 2 5 7"
+	    local aPositions="1 2 3 4 5 6 7 8"
+	    local aPositions="4 3 1 2 5 8 6 7"
+	    local params="1 2 3 4 5 6 7 8"
 	    for a in $aPositions; do
-		if true; then
-		    local params="1 2 3 4 5 6 7 8 X"
+		if false; then
 		    local resultsFile="$(dirname $ANA_RESULTS_FILE)/$(ana_time_stamp)-recoveryVsEvilRoute-$a"
 		    sec_prepare_attacks 1020 100[0-8] XXX XXX 1000 102[0-8] "evilRouteDropping=1 evilDescDropping=0 evilOgmDropping=0 evilOgmMetrics=0"
 		    for p in $params; do
@@ -1216,17 +1213,16 @@ sec_run_attack_scenarios() {
 		fi
 
 		if true; then
-		    local params="1 2 3 4 5 6 7 8"
 		    local resultsFile="$(dirname $ANA_RESULTS_FILE)/$(ana_time_stamp)-recoveryVsEvilMetric-$a"
 		    sec_prepare_attacks 1020 100[0-8] XXX XXX 1000 102[0-8] "evilRouteDropping=1 evilDescDropping=0 evilOgmDropping=0 evilOgmMetrics=1"
 		    for p in $params; do
-			time sec_measure_attack_scenario $a X 1 3 $resultsFile $p XXX 10[0,2]$p "mlc100[0-9] -e name=mlc102[0-$((($p - 1)))]" "mlc10[0-2][0-9]" "mlc102[0-9] -e name=mlc100[0-$((($p - 1)))]"
+			time sec_measure_attack_scenario $a X 8 3 $resultsFile $p XXX 10[0,2]$p "mlc100[0-9] -e name=mlc102[0-$((($p - 1)))]" "mlc10[0-2][0-9]" "mlc102[0-9] -e name=mlc100[0-$((($p - 1)))]"
 		    done
 		fi
 	    done
 	fi
 
-	if true; then
+	if false; then
 	    sec_prepare_attacks
  	    sec_set_cmd 100${dfltAHops} "evilDescDropping=1"
  	    sec_set_cmd 102${dfltCHops} "evilDescDropping=1"
@@ -1239,7 +1235,7 @@ sec_run_attack_scenarios() {
 	    done
 	fi
 
-	if true; then
+	if false; then
 	    local losses="3 5 7 9 11 13 15"
 	    local losses="3 5 9 13"
 	    local losses="3 9 13"
