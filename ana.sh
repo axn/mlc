@@ -1189,6 +1189,7 @@ sec_run_attack_scenarios() {
     local l=
     local p=
     local a=
+    local x=
 
 #    sec_init_attack_scenarios
 #    sec_create_protos_mlc
@@ -1200,23 +1201,22 @@ sec_run_attack_scenarios() {
     for round in $(seq 1 $ANA_MEASURE_ROUNDS); do
 	if true; then
 
-	    local aPositions="1 2 3 4 5 6 7 8"
-	    local aPositions="4 3 1 2 5 8 6 7"
+	    local xPositions="5 6 7 8 4 3 2 1"
 	    local params="1 2 3 4 5 6 7 8"
-	    for a in $aPositions; do
+	    for x in $xPositions; do
 		if false; then
-		    local resultsFile="$(dirname $ANA_RESULTS_FILE)/$(ana_time_stamp)-recoveryVsEvilRoute-$a"
+		    local resultsFile="$(dirname $ANA_RESULTS_FILE)/$(ana_time_stamp)-recoveryVsEvilRoute-$x"
 		    sec_prepare_attacks 1020 100[0-8] XXX XXX 1000 102[0-8] "evilRouteDropping=1 evilDescDropping=0 evilOgmDropping=0 evilOgmMetrics=0"
-		    for p in $params; do
-			time sec_measure_attack_scenario $a X $p 3 $resultsFile X XXX 10[0,2][0-8] 
+		    for p in $prams; do
+			time sec_measure_attack_scenario $x X $p 3 $resultsFile X XXX 10[0,2][0-8] 
 		    done
 		fi
 
 		if true; then
-		    local resultsFile="$(dirname $ANA_RESULTS_FILE)/$(ana_time_stamp)-recoveryVsEvilMetric-$a"
+		    local resultsFile="$(dirname $ANA_RESULTS_FILE)/$(ana_time_stamp)-recoveryVsEvilMetric-$x"
 		    sec_prepare_attacks 1020 100[0-8] XXX XXX 1000 102[0-8] "evilRouteDropping=1 evilDescDropping=0 evilOgmDropping=0 evilOgmMetrics=1"
 		    for p in $params; do
-			time sec_measure_attack_scenario $a X 8 3 $resultsFile $p XXX 10[0,2]$p "mlc100[0-9] -e name=mlc102[0-$((($p - 1)))]" "mlc10[0-2][0-9]" "mlc102[0-9] -e name=mlc100[0-$((($p - 1)))]"
+			time sec_measure_attack_scenario 8 X $p 3 $resultsFile $x XXX 10[0,2]$x "mlc100[0-9] -e name=mlc102[0-$((($x - 1)))]" "mlc10[0-2][0-9]" "mlc102[0-9] -e name=mlc100[0-$((($x - 1)))]"
 		    done
 		fi
 	    done
