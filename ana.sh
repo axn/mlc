@@ -933,7 +933,7 @@ sec_get_dbItem() {
     local inField=${3:-"name"}
     local dbFile=${4:-"$ANA_NODE_DB_FILE"}
 
-    local nodeInfo="$(grep -e "${inField}=${pattern} "  $dbFile)"
+    local nodeInfo="$(grep -e ${inField}=${pattern}  $dbFile)"
 
 #   echo "nodeInfo=$nodeInfo"
     
@@ -975,7 +975,7 @@ sec_tcpdump_filter() {
 
 #   for p in $pattern; do
 #	local grepMac="$(sec_get_dbItem $p $outField $inField)"
-    for grepMac in $(sec_get_dbItem $pattern $outField $inField); do
+    for grepMac in $(sec_get_dbItem "$pattern" $outField $inField); do
 	inData="$(echo "$inData" | grep -$grepCond " > $grepMac")"
     done
     echo "$inData"
@@ -1039,7 +1039,7 @@ sec_ping_e2e() {
 #	sec_tcpdump_translate $outFile.all | less
 
 	echo "Last failed packet:"
-	sec_tcpdump_filter $outFile $trustSet v > $outFile.l
+	sec_tcpdump_filter $outFile "$trustSet" v > $outFile.l
 	echo "Last failed packet done"
 	local lCatched="$(sec_tcpdump_translate $outFile.l | grep -v "Filter" | tail -n1)"
 	local lFullTime="$( echo $lCatched | cut -d' ' -f1 )"
@@ -1059,7 +1059,7 @@ sec_ping_e2e() {
 	local fRxNode="$(echo "$fCatched" | cut -d' ' -f4)"
 
 	echo "first Error packet:"
-	sec_tcpdump_filter $outFile $trustSet v > $outFile.e
+	sec_tcpdump_filter $outFile "$trustSet" v > $outFile.e
 	local eCatched="$(sec_tcpdump_translate $outFile.e | grep -v "Filter" | head -n1)"
 	local eFullTime="$( echo $eCatched | cut -d' ' -f1 )"
 	local eTime="$( echo "scale=2; ( ( $(echo "$eCatched" | cut -d' ' -f1 | cut -d':' -f2) * 60 )   +   $(echo "$eCatched" | cut -d' ' -f1 | cut -d':' -f3) )" | bc 2>/dev/null )"
@@ -1106,8 +1106,13 @@ sec_measure_attack_scenario() {
     local aNode=${6:-"X"}
     local trusterNodes="${7:-"^10[0,2]0$"}"
     local attackerNodes="${8:-"^10[0-2][0-8]"}"
-    local duration="${9:-$ANA_MEASURE_TIME}"
-    local succeeds="${10:-10}"
+
+    local aTrusteds="${9:-"mlc10[0,0][0-9]"}"
+    local bTrusteds="${10:-"mlc10[0-2][0-9]"}"
+    local cTrusteds="${11:-"mlc10[1,2][0-9]"}"
+
+    local duration="${12:-$ANA_MEASURE_TIME}"
+    local succeeds="${13:-10}"
     local attackDuration=30
     local srcNode=1009
     
@@ -1146,9 +1151,9 @@ sec_measure_attack_scenario() {
 	echo "aHops=$aHops bHops=$bHops cHops=$cHops lq=$lq aNode=$aNode" > $tmpDir/topo.out
 
 	echo "Starting Attack Measurement ping"
-	sec_ping_e2e $tmpDir/trace-a-attack ${srcNode:-1009} 1000 "mlc10[0,0][0-9]" $attackDuration $attackDuration &
-	sec_ping_e2e $tmpDir/trace-b-attack ${srcNode:-1019} 1010 "mlc10[0-2][0-9]" $attackDuration $attackDuration &
-	sec_ping_e2e $tmpDir/trace-c-attack ${srcNode:-1029} 1020 "mlc10[1,2][0-9]" $attackDuration $attackDuration &
+	sec_ping_e2e $tmpDir/trace-a-attack ${srcNode:-1009} 1000 "$aTrusteds" $attackDuration $attackDuration &
+	sec_ping_e2e $tmpDir/trace-b-attack ${srcNode:-1019} 1010 "$bTrusteds" $attackDuration $attackDuration &
+	sec_ping_e2e $tmpDir/trace-c-attack ${srcNode:-1029} 1020 "$cTrusteds" $attackDuration $attackDuration &
 	echo "Starting attacks"
 	sec_set_cmd "$attackerNodes" "attackedNodesDir=/$ANA_NODE_ATTACKED_DIR" 
 	wait
@@ -1157,9 +1162,9 @@ sec_measure_attack_scenario() {
 #	sleep 2
 	echo
 	echo "Starting Recovery Measurement ping"
-	sec_ping_e2e $tmpDir/trace-a-recover ${srcNode:-1009} 1000 "mlc10[0,0][0-9]" $duration $succeeds  &
-	sec_ping_e2e $tmpDir/trace-b-recover ${srcNode:-1019} 1010 "mlc10[0-2][0-9]" $duration $succeeds  &
-	sec_ping_e2e $tmpDir/trace-c-recover ${srcNode:-1029} 1020 "mlc10[1,2][0-9]" $duration $succeeds  &
+	sec_ping_e2e $tmpDir/trace-a-recover ${srcNode:-1009} 1000 "$aTrusteds" $duration $succeeds  &
+	sec_ping_e2e $tmpDir/trace-b-recover ${srcNode:-1019} 1010 "$bTrusteds" $duration $succeeds  &
+	sec_ping_e2e $tmpDir/trace-c-recover ${srcNode:-1029} 1020 "$cTrusteds" $duration $succeeds  &
 	sec_set_cmd "$trusterNodes" "trustedNodesDir=/$ANA_NODE_TRUSTED_DIR"
 
 	true && (
@@ -1187,6 +1192,7 @@ sec_run_attack_scenarios() {
     local dfltCHops=${3:-"1"}
     local l=
     local p=
+    local a=
 
 #    sec_init_attack_scenarios
 #    sec_create_protos_mlc
@@ -1196,24 +1202,28 @@ sec_run_attack_scenarios() {
     sec_prepare_trust
 
     for round in $(seq 1 $ANA_MEASURE_ROUNDS); do
-	if false; then
-	    local attacker="3 4 5 6 7 8"
+	if true; then
 
-	    if false; then
-		local resultsFile="$(dirname $ANA_RESULTS_FILE)/$(ana_time_stamp)-recoveryVsEvilRoute"
-		for a in $attacker; do
+	    local aPositions="8 6 4 3 1 2 5 7"
+	    for a in $aPositions; do
+		if true; then
+		    local params="1 2 3 4 5 6 7 8 X"
+		    local resultsFile="$(dirname $ANA_RESULTS_FILE)/$(ana_time_stamp)-recoveryVsEvilRoute-$a"
+		    sec_prepare_attacks 1020 100[0-8] XXX XXX 1000 102[0-8] "evilRouteDropping=1 evilDescDropping=0 evilOgmDropping=0 evilOgmMetrics=0"
+		    for p in $params; do
+			time sec_measure_attack_scenario $a X $p 3 $resultsFile X XXX 10[0,2][0-8] 
+		    done
+		fi
 
-		    sec_prepare_attacks 1000 100$a XXX XXX XXX XXX "evilRouteDropping=1 evilDescDropping=0 evilOgmDropping=0 evilOgmMetrics=0"
-		    time sec_measure_attack_scenario 3 X X 3 $resultsFile $a XXX 100$a 10 10
-		done
-	    fi
-	    if true; then
-		local resultsFile="$(dirname $ANA_RESULTS_FILE)/$(ana_time_stamp)-recoveryVsEvilMetric"
-		for a in $attacker; do
-		    sec_prepare_attacks 1000 100$a XXX XXX XXX XXX "evilRouteDropping=1 evilDescDropping=0 evilOgmDropping=0 evilOgmMetrics=1"
-		    time sec_measure_attack_scenario 3 X X 3 $resultsFile $a XXX 100$a 30 30
-		done
-	    fi
+		if true; then
+		    local params="1 2 3 4 5 6 7 8"
+		    local resultsFile="$(dirname $ANA_RESULTS_FILE)/$(ana_time_stamp)-recoveryVsEvilMetric-$a"
+		    sec_prepare_attacks 1020 100[0-8] XXX XXX 1000 102[0-8] "evilRouteDropping=1 evilDescDropping=0 evilOgmDropping=0 evilOgmMetrics=1"
+		    for p in $params; do
+			time sec_measure_attack_scenario $a X 1 3 $resultsFile $p XXX 10[0,2]$p "mlc100[0-9] -e name=mlc102[0-$((($p - 1)))]" "mlc10[0-2][0-9]" "mlc102[0-9] -e name=mlc100[0-$((($p - 1)))]"
+		    done
+		fi
+	    done
 	fi
 
 	if true; then
