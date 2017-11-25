@@ -107,6 +107,10 @@ ana_update_mlc() {
 	make clean_all build_all install_all EXTRA_CFLAGS=$ANA_MAKE_ARGS"
 }
 
+ana_update_mlc_fast() {
+    ssh root@mlc "cd $ANA_PROT_DIR && \
+	make build_all install_all EXTRA_CFLAGS=$ANA_MAKE_ARGS"
+}
 
 ana_update_dst() {
 
