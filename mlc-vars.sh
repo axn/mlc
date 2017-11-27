@@ -379,10 +379,6 @@ iproute vlan bridge-utils \
 openssh-server \
 iputils-ping \
 vim nano less \
-
-"
-
-mlc_deb_packages_full="\
 locales-all \
 dialog \
 netdiag \
