@@ -23,7 +23,6 @@
 # ONLY in a completely isolated environment like qmp or virtual box
 
 
-
 mlc_lxc_bin_dir="$(which lxc-create | awk -F'/lxc-create' '{print $1}')"
 mlc_lxc_examples="/usr/share/doc/lxc/examples"
 
@@ -41,12 +40,21 @@ mlc_conf_dir="/var/lib/lxc"
 
 mlc_owrt_fs_tgz="/usr/src/openwrt/13f/qmpfw-gsoc.git/build/alix/bin/x86/openwrt-x86-generic-rootfs.tar.gz"
 
-mlc_arch="i386" # i386 (for i686)  or  amd64 (for x86_64), or nothing for autodetection
-mlc_debian_suite="squeeze" # squeeze, lenny, wheezy, sid.  Or check whats available on: http://cdn.debian.net/debian/
+mlc_arch="amd64" # i386 (for i686)  or  amd64 (for x86_64), or nothing for autodetection
+mlc_debian_suite="stretch" # squeeze, lenny, wheezy, sid.  Or check whats available on: http://cdn.debian.net/debian/
 
-mlc_empty_dirs="media dev mnt proc sys   var/local var/lock var/log var/log/fsck var/mail var/opt var/run var/tmp"
-mlc_copy_dirs="etc home root selinux srv tmp var/spool var/www "
-mlc_mount_dirs="bin boot lib opt sbin usr  var/backups var/cache var/lib"
+mlc_empty_dirs=
+mlc_copy_dirs=
+mlc_mount_dirs=
+
+#mlc_empty_dirs="media dev mnt proc sys   var/local var/lock var/log var/log/fsck var/mail var/opt var/run var/tmp"
+#mlc_copy_dirs="etc home root selinux srv tmp var/spool var/www "
+#mlc_mount_dirs="bin boot lib opt sbin usr  var/backups var/cache var/lib"
+
+mlc_empty_dirs="media mnt opt proc run run/mount sys var/backups var/local var/log var/mail "
+mlc_copy_dirs="dev etc home root selinux srv tmp lib64 var/lock var/run var/spool var/tmp var/www "
+mlc_mount_dirs="sbin bin usr boot lib var/cache var/lib "
+
 
 mlc_name_prefix="mlc"
 mlc_bridge_prefix="mbr"
@@ -72,8 +80,9 @@ mlc_ns3_idx_max="3"
 
 mlc_mac6_multicast="33:33:0:0:0:0/ff:ff:0:0:0:0"
 
-mlc_pub_key="ssh-rsa AAAasd..."
-mlc_passwd=""
+mlc_pub_key="ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAvbTSxpSlDBV7m+c0i1rUFpaasegLjRL+BZunrpKb1YFvJXwS2DD1WqnAypBk/AlgR9KQlXfHSpeRqxY0HbBnPWG79LQ2NlVlcvF7xokpw3eUeYKpJwx0ivNd/koKE3wvoFN158JseFhUBGcZdaFRGh6bFhrvvXYmAHjroHvaGgVR8YQI4DiKrBULQd75p/U3G2UjeZpMeTK+LaCkuWh0g+93LQPp21w6v8hOZtudJ2rhNHNYB0oFJF8Uf5q+uVjpbOzA/nPxs/qiF4zdg2oyj0eAi0Yfo+eSVI/zj3iyeC4rF5S8/s/cyet+XMXvLQ6X12XUYu7Qv/VEVwI5QkVqSw== mlc@mlc"
+
+mlc_passwd="mlc"
 
 mlc_cpu_idle_assumption=50
 
@@ -81,6 +90,8 @@ mlc_lang="en_US.UTF-8"
 mlc_language="en_US:en"
 export LANG="$mlc_lang"
 export LANGUAGE="$mlc_language"
+export LC_ALL="$mlc_lang"
+
 
 mlc_mac_prefix="a0:cd:ef"
 mlc_net_mtu="1500"
@@ -359,36 +370,36 @@ MLC_assign_networks() {
 
 MLC_assign_networks $mlc_node
 
-
-
 mlc_deb_packages="\
+aptitude \
 ifupdown \
-locales-all \
-libui-dialog-perl \
-dialog \
 netbase \
 net-tools \
-netdiag \
 iproute vlan bridge-utils \
 openssh-server \
 iputils-ping \
-vim nano \
+vim nano less \
+
+"
+
+mlc_deb_packages_full="\
+locales-all \
+dialog \
+netdiag \
 man-db \
-less \
 ipcalc ipv6calc \
 wget \
 bzip2 \
 unzip \
-aptitude \
 build-essential gdb file subversion git-core \
-libjson0 libjson0-dbg libjson0-dev \
 lynx \
 telnet \
 tcpdump \
 mtr traceroute \
 psmisc lsof \
 iptraf  netcat iperf  \
-bison flex m4 autoconf autoconf-archive cmake autogen dh-autoreconf gawk texinfo \
+bison flex m4 autoconf autoconf-archive cmake autogen dh-autoreconf gawk \
+libjson-c-dev zlib1g-dev libiw-dev \
 mini-httpd \
 nmap \
 
@@ -396,20 +407,18 @@ nmap \
 
 mlc_deb_packages_disabled="\
 quagga quagga-doc \
+texinfo \
 "
 
 mlc_sources="\
-http://downloads.openwrt.org/sources/uci-0.7.5.tar.gz \
-http://www.yassl.com/cyassl-1.4.0.zip \
-http://www.olsr.org/releases/0.6/olsrd-0.6.1.tar.gz \
-http://www.pps.jussieu.fr/~jch/software/files/babeld-1.1.1.tar.gz \
+uci-0.7.5::http://downloads.openwrt.org/sources/uci-0.7.5.tar.gz \
+mbedtls-2.4.0-gpl::https://tls.mbed.org/download/mbedtls-2.4.0-gpl.tgz \
+olsrd-0.9.6::http://www.olsr.org/releases/0.9/olsrd-0.9.6.tar.gz \
+babeld-1.8.0::http://www.pps.jussieu.fr/~jch/software/files/babeld-1.8.0.tar.gz \
 "
 
-mlc_svns=""
-
 mlc_gits=" \
-uci.git::git://nbd.name/uci.git \
-bmx6.git::git://git.bmx6.net/bmx6.git \
+bmx6.git::https://github.com/axn/bmx6.git \
 "
 
 
@@ -530,7 +539,7 @@ MLC_loop_boot() {
 #  set -x
   local node=$1
   local name="$mlc_name_prefix$1"
-  
+
   lxc-info --name $name | grep -q RUNNING && echo "$name already RUNNING" || lxc-start -n $name -d
 }
 
@@ -557,7 +566,6 @@ mlc_loop() {
   local loop_update=0
 
   local loop_exec="0"
-  local loop_config=""
 
   local shortopts="hpcubsdli:a:e:C:"
   local longopts="help,pretend,create,update;boot,stop,destroy,load,min:,max:,hosts,exec:,config:"
@@ -583,7 +591,6 @@ mlc_loop() {
 		  -d|--desroy)	 loop_destroy=1 ; shift 1 ;;
 		  -p|--pretend)	 loop_pretend="echo"; shift 1;;
 		  -e|--exec)	 loop_exec=$2; shift 2;;
-	          -C|--config)   loop_config=$2; shift 2;;
 		  --) shift ; break ;;
 		  *) echo "Internal error!" ; return 1 ;;
 	  esac
@@ -594,12 +601,13 @@ mlc_loop() {
 
       [ "$loop_load" == "1" ]    &&  mlc_cpu_sleep_until_idle
       [ "$loop_create" == "1" ]  && echo "creating   $loop_name" && $loop_pretend mlc_create_child $node && sync
-      [ "$loop_update" == "1" ]  && echo "updating   $loop_name" && $loop_pretend mlc_update_individual $node $loop_config
+      [ "$loop_update" == "1" ]  && echo "updating   $loop_name" && $loop_pretend mlc_update_individual $node
       [ "$loop_boot" == "1" ]    && echo "booting    $loop_name" && \
 	  mlc_cpu_sleep_until_idle  &&  sync  && $loop_pretend MLC_loop_boot $node
       [ "$loop_stop" == "1" ]    && echo "stopping   $loop_name" && $loop_pretend lxc-stop -kn $mlc_name_prefix$node #-t 1
       [ "$loop_destroy" == "1" ] && echo "destroying $loop_name" && $loop_pretend mlc_destroy $node
-      [ "$loop_exec" != "0" ]    && echo "executing  $loop_name $loop_exec" && $loop_pretend $mlc_ssh root@"$(MLC_calc_ip4 $mlc_ip4_admin_prefix1 $node $mlc_admin_idx )" $loop_exec
+#     [ "$loop_exec" != "0" ]    && echo "executing  $loop_name $loop_exec" && $loop_pretend $mlc_ssh root@"$(MLC_calc_ip4 $mlc_ip4_admin_prefix1 $node $mlc_admin_idx )" $loop_exec
+      [ "$loop_exec" != "0" ]    && echo "executing  $loop_name $loop_exec" && $loop_pretend lxc-attach -n $loop_name -- $loop_exec
   done
 
   [ "$loop_boot" == "1" ]    &&  $loop_pretend  mlc_veth_obtain
@@ -818,24 +826,23 @@ mlc_ls() {
 
 MLC_veth_obtain() {
 #set -x
+  local name=
+  local dev=
+  local cache_file="$mlc_tmp_dir/MLC_veth_obtain.tmp"
 
   printf "%-10s %-10s\n" "container:"  "state:"
 
-  local name
-  local dev
-  local cache_file="$mlc_tmp_dir/MLC_veth_obtain.tmp"
-
   for name in $(lxc-ls  | grep $mlc_name_prefix | sort -u); do
-    if lxc-info -n $name| grep -q RUNNING ; then
+    if echo "$name" | grep -q "$mlc_name_prefix" && lxc-info -n $name| grep -q RUNNING ; then
       printf "%-10s %-10s " $name "RUNNING"
 
       local node=$( echo $name | awk -F"$mlc_name_prefix" '{print $2}'  )
       local node_ip="$(MLC_calc_ip4 $mlc_ip4_admin_prefix1 $node $mlc_admin_idx )"
 
-
       if ping -n -c1 $node_ip > /dev/null ; then
 	  
-	      for dev in $( $mlc_ssh root@$node_ip ip link | tee $cache_file | grep ": ${mlc_dev_prefix}" | grep -v "@" | awk -F ': ' '{print $2}' | sort -u) ; do
+#	      for dev in $( $mlc_ssh root@$node_ip ip link | tee $cache_file | grep ": ${mlc_dev_prefix}" | grep -v "@" | awk -F ': ' '{print $2}' | sort -u) ; do
+	      for dev in $( lxc-attach -n $name -- ip link | tee $cache_file | grep ": ${mlc_dev_prefix}" | grep -v "@" | awk -F ': ' '{print $2}' | sort -u) ; do
 
 		printf "%8s: " $dev
 
@@ -874,7 +881,7 @@ MLC_veth_obtain() {
       fi
 
     else
-      printf "%-6s %-10s " $m "???"
+      printf "%-6s %-10s " "$name" "???"
     fi
     printf "\n"
   done
@@ -1600,35 +1607,31 @@ MLC_configure_individual() {
 
     local vm_rootfs=$mlc_conf_dir/$vm_name/rootfs
 
-    local custom_config=$2
     local mother_name="${mlc_name_prefix}${mlc_mother_id}"
 
-echo MLC_configure_individual "vm_id=$vm_id vm_name=$vm_name custom_config=$custom_config"
+    echo MLC_configure_individual "vm_id=$vm_id vm_name=$vm_name"
 
         # cp -ar $mlc_path_dir/files/* $vm_rootfs
         # http://stackoverflow.com/questions/2193584/copy-folder-recursively-excluding-some-folders 
         # putting things in files/usr/ does not work because it'll be overmounted anyway!
 
-if [ "$vm_name" == "$mother_name" ] ; then
+    if [ "$vm_name" == "$mother_name" ] ; then
 	rsync -av --exclude='.svn' --exclude='.git' $mlc_path_dir/files/* $vm_rootfs/
-else
+    else
 	rsync -av --exclude='.svn' --exclude='.git' $mlc_path_dir/files/etc $vm_rootfs/
-fi
-	if [ $? -ne 0 ]; then
-	    echo "Failednnn to copy extra files to vm_rootfs"
-	    return 1
-	fi
+    fi
 
   mkdir -p $vm_rootfs/etc/config
 
-  find $vm_rootfs/root/fifo0 > /dev/null 2>&1 || mkfifo $vm_rootfs/root/fifo0
-  find $vm_rootfs/root/fifo1 > /dev/null 2>&1 || mkfifo $vm_rootfs/root/fifo1
-  
     # set the hostname
     cat <<EOF > $vm_rootfs/etc/hostname
 $vm_name
 EOF
 
+# set the nameserver
+cat <<EOF > $mother_rootfs/etc/resolv.conf
+nameserver $mlc_dns
+EOF
 
     # configure the network using static IPs
     cat <<EOF > $vm_rootfs/etc/network/interfaces
@@ -1660,8 +1663,8 @@ iface $mlc_net1_name inet static
 #  broadcast $mlc_net11_ip4_brc
 #  vlan_raw_device $mlc_net1_name
 #  up /sbin/ip -6 addr add $mlc_net11_ula_addr/$mlc_net11_ula_mask dev $mlc_net11_name
-##  up /sbin/ip -6 addr add $mlc_net11_rip_addr/$mlc_net11_rip_mask dev $mlc_net11_name
-#
+#  up /sbin/ip -6 addr add $mlc_net11_rip_addr/$mlc_net11_rip_mask dev $mlc_net11_name
+
 #auto  $mlc_net12_name
 #iface $mlc_net12_name inet static
 #  address $mlc_net12_ip4_addr
@@ -2087,13 +2090,6 @@ Interface "$mlc_net21_name"
 EOF
 
 
-if ! [ -z $custom_config ] ; then
-    if ! [ -f $custom_config ] ; then
-	echo "ERROR: custom_config=$custom_config does not exist"
-	return 1
-    fi
-    . $custom_config
-fi
 
     return 0
 }
@@ -2105,18 +2101,29 @@ fi
 
 MLC_create_lxc_config()
 {
-    local child_rootfs=$1
-    local child_config=$2
-    local mother_rootfs=$3
+    local node_name=$1
+
+    local child_rootfs=$mlc_conf_dir/$node_name/rootfs
+    local child_config=$mlc_conf_dir/$node_name
+    local mother_name="${mlc_name_prefix}${mlc_mother_id}"
+    local mother_rootfs=$mlc_conf_dir/$mother_name/rootfs
+
+    echo "MLC_create_lxc_config() node_name=$node_name child_rootfs=$child_rootfs child_config=$child_config mother_name=$mother_name mother_rootfs=$mother_rootfs"
 
     
     mkdir -p $child_config
     [ -f $child_config/config.old ] && mv -f $child_config/config.old $child_config/config.old.old
     [ -f $child_config/config ] && mv -f $child_config/config $child_config/config.old
 
+
     cat <<EOF > $child_config/config
-lxc.tty = 4
-lxc.pts = 1024
+
+##########################################################
+# Container specific configuration
+lxc.utsname = $node_name
+lxc.arch = $mlc_arch
+lxc.rootfs = $child_rootfs
+lxc.rootfs.backend = dir
 
 lxc.network.type = veth
 lxc.network.flags = up
@@ -2142,7 +2149,136 @@ lxc.network.mtu = $mlc_net_mtu
 lxc.network.hwaddr = $mlc_net2_mac
 lxc.network.veth.pair = $mlc_net2_veth
 
+
+# Common configuration
+# lxc.include = /usr/share/lxc/config/debian.common.conf
+##########################################################
+# Copied from /share/lxc/config/debian.common.conf
+# This derives from the global common config  
+# lxc.include = /usr/share/lxc/config/common.conf
+##########################################################
+# Copied from /usr/share/lxc/config/common.conf
+# Default configuration shared by all containers
+
+# Setup the LXC devices in /dev/lxc/
+lxc.devttydir = lxc
+
+# Allow for 1024 pseudo terminals
+lxc.pts = 1024
+
+# Setup 4 tty devices
+lxc.tty = 4
+
+# Drop some harmful capabilities
+lxc.cap.drop = mac_admin mac_override sys_time sys_module sys_rawio
+
+# Set the pivot directory
+lxc.pivotdir = lxc_putold
+
+# Ensure hostname is changed on clone
+lxc.hook.clone = /usr/share/lxc/hooks/clonehostname
+
+# CGroup whitelist
+lxc.cgroup.devices.deny = a
+## Allow any mknod (but not reading/writing the node)
+lxc.cgroup.devices.allow = c *:* m
+lxc.cgroup.devices.allow = b *:* m
+## Allow specific devices
+### /dev/null
+lxc.cgroup.devices.allow = c 1:3 rwm
+### /dev/zero
+lxc.cgroup.devices.allow = c 1:5 rwm
+### /dev/full
+lxc.cgroup.devices.allow = c 1:7 rwm
+### /dev/tty
+lxc.cgroup.devices.allow = c 5:0 rwm
+### /dev/console
+lxc.cgroup.devices.allow = c 5:1 rwm
+### /dev/ptmx
+lxc.cgroup.devices.allow = c 5:2 rwm
+### /dev/random
+lxc.cgroup.devices.allow = c 1:8 rwm
+### /dev/urandom
+lxc.cgroup.devices.allow = c 1:9 rwm
+### /dev/pts/*
+lxc.cgroup.devices.allow = c 136:* rwm
+### fuse
+lxc.cgroup.devices.allow = c 10:229 rwm
+
+# Setup the default mounts
+lxc.mount.auto = cgroup:mixed proc:mixed sys:mixed
+lxc.mount.entry = /sys/fs/fuse/connections sys/fs/fuse/connections none bind,optional 0 0
+
+# Blacklist some syscalls which are not safe in privileged
+# containers
+lxc.seccomp = /usr/share/lxc/config/common.seccomp
+
+# Lastly, include all the configs from /usr/share/lxc/config/common.conf.d/
+# lxc.include = /usr/share/lxc/config/common.conf.d/
+##########################################################
+# Copied from /usr/share/lxc/config/common.conf.d/00-lxcfs.conf
+lxc.hook.mount = /usr/share/lxcfs/lxc.mount.hook
+lxc.hook.post-stop = /usr/share/lxcfs/lxc.reboot.hook
+##########################################################
+
+# Doesn't support consoles in /dev/lxc/
+lxc.devttydir =
+
+# When using LXC with apparmor, the container will be confined by default.
+# If you wish for it to instead run unconfined, copy the following line
+# (uncommented) to the container's configuration file.
+#lxc.aa_profile = unconfined
+
+# If you wish to allow mounting block filesystems, then use the following
+# line instead, and make sure to grant access to the block device and/or loop
+# devices below in lxc.cgroup.devices.allow.
+#lxc.aa_profile = lxc-container-default-with-mounting
+
+# Extra cgroup device access
+## rtc
+lxc.cgroup.devices.allow = c 254:0 rm
+## tun
+lxc.cgroup.devices.allow = c 10:200 rwm
+## hpet
+lxc.cgroup.devices.allow = c 10:228 rwm
+## kvm
+lxc.cgroup.devices.allow = c 10:232 rwm
+## To use loop devices, copy the following line to the container's
+## configuration file (uncommented).
+#lxc.cgroup.devices.allow = b 7:* rwm
+##########################################################
+
+
+
+## consoles
+#lxc.cgroup.devices.allow = c 4:0 rwm
+#lxc.cgroup.devices.allow = c 4:1 rwm
+
+#lxc.mount.entry=proc   $mother_rootfs/proc proc nodev,noexec,nosuid 0 0
+#lxc.mount.entry=devpts $mother_rootfs/dev/pts devpts defaults 0 0
+#lxc.mount.entry=sysfs  $mother_rootfs/sys sysfs defaults  0 0
+
 EOF
+
+
+    
+    if [ $? -ne 0 ]; then
+	echo "Failed to add configuration"
+	return 1
+    fi
+
+    if [ "$mother_rootfs" ] && [ "$node_name" != "$mother_name" ] ; then
+	for dir in $mlc_mount_dirs; do
+	    cat <<EOF >> $child_config/config
+# lxc.mount.entry=$mother_rootfs/$dir $child_rootfs/$dir none ro,bind 0 0
+lxc.mount.entry=$mother_rootfs/$dir $dir none ro,bind 0 0
+EOF
+	    if [ $? -ne 0 ]; then
+		echo "failed to attach $dir mount entry to lxc configuration file: $child_config"
+		return 1
+	    fi
+	done
+    fi
 
     cat <<EOF >> /dev/zero 
 # $child_config/config
@@ -2184,52 +2320,6 @@ lxc.network.veth.pair = $mlc_net7_veth
 
 EOF
 
-    cat <<EOF >> $child_config/config
-
-lxc.rootfs = $child_rootfs
-lxc.mount.entry=proc   $mother_rootfs/proc proc nodev,noexec,nosuid 0 0
-lxc.mount.entry=devpts $mother_rootfs/dev/pts devpts defaults 0 0
-lxc.mount.entry=sysfs  $mother_rootfs/sys sysfs defaults  0 0
-
-lxc.cgroup.devices.deny = a
-# /dev/null and zero
-lxc.cgroup.devices.allow = c 1:3 rwm
-lxc.cgroup.devices.allow = c 1:5 rwm
-# consoles
-lxc.cgroup.devices.allow = c 5:1 rwm
-lxc.cgroup.devices.allow = c 5:0 rwm
-lxc.cgroup.devices.allow = c 4:0 rwm
-lxc.cgroup.devices.allow = c 4:1 rwm
-# /dev/{,u}random
-lxc.cgroup.devices.allow = c 1:9 rwm
-lxc.cgroup.devices.allow = c 1:8 rwm
-lxc.cgroup.devices.allow = c 136:* rwm
-lxc.cgroup.devices.allow = c 5:2 rwm
-# rtc
-lxc.cgroup.devices.allow = c 254:0 rwm
-# /dev/net/tun  # stops every related process for ever (maybe only with 64-bit kernel and 32bit bins)
-lxc.cgroup.devices.allow = c 10:200 rwm
-
-EOF
-
-    if [ $? -ne 0 ]; then
-	echo "Failed to add configuration"
-	return 1
-    fi
-
-#    if ! [ "$child_rootfs" == "$mother_rootfs" ] ; then
-    if [ "$mother_rootfs" ] && [ "$child_rootfs" != "$mother_rootfs" ] ; then
-	for dir in $mlc_mount_dirs; do
-	    cat <<EOF >> $child_config/config
-lxc.mount.entry=$mother_rootfs/$dir $child_rootfs/$dir none ro,bind 0 0
-EOF
-	    if [ $? -ne 0 ]; then
-		echo "failed to attach $dir mount entry to lxc configuration file: $child_config"
-		return 1
-	    fi
-	done
-    fi
-
     return 0
 }
 
@@ -2246,7 +2336,6 @@ mlc_update_individual() {
     local node_id=$1
     local node_name=$mlc_name_prefix$node_id
 
-    local custom_config=$2
     local mother_name="${mlc_name_prefix}${mlc_mother_id}"
 
     if ! lxc-info -n $node_name | grep STOPPED ; then 
@@ -2267,12 +2356,12 @@ mlc_update_individual() {
     echo configuring $child_rootfs $node_id $(( $node_id % 100 )) $(( $node_id / 100 )) 
 
 
-    MLC_configure_individual $node_id $custom_config
+    MLC_configure_individual $node_id
     if [ $? -ne 0 ]; then
 	echo "failed to configure $child_rootfs"; return 1
     fi
 
-    MLC_create_lxc_config  $child_rootfs $child_config $mother_rootfs
+    MLC_create_lxc_config  $node_name
     if [ $? -ne 0 ]; then
 	echo "failed write childs configuration file: $child_config"; return 1
     fi
@@ -2286,6 +2375,11 @@ MLC_install_child()
 {
   local child_rootfs=$1
   local mother_rootfs=$2
+
+  echo "MLC_install_child   child_rootfs=$child_rootfs mother_rootfs=$mother_rootfs"
+
+  
+  mkdir -p $child_rootfs/
 
   for dir in $mlc_empty_dirs; do
     mkdir -p $child_rootfs/$dir
@@ -2304,23 +2398,29 @@ MLC_install_child()
     fi
   done
 
-  if echo "$mlc_arch" | grep "64"  ; then
-      ln -s /lib $child_rootfs/lib64
-  fi
+  if false; then
 
-  chmod 755 $child_rootfs/*
-  chmod 777 $child_rootfs/tmp
-
-  chmod 777 $child_rootfs/var/tmp
-
-  chmod 777 $child_rootfs/var/local
-  chmod g+s $child_rootfs/var/local
-  chgrp staff $child_rootfs/var/local
-
-  chmod 777 $child_rootfs/var/lock
-  chmod o+t $child_rootfs/var/lock
+      find $vm_rootfs/root/fifo0 > /dev/null 2>&1 || mkfifo $vm_rootfs/root/fifo0
+      find $vm_rootfs/root/fifo1 > /dev/null 2>&1 || mkfifo $vm_rootfs/root/fifo1
   
-  chmod g+ws $child_rootfs/var/mail
+      if echo "$mlc_arch" | grep "64"  ; then
+	  ln -s /lib $child_rootfs/lib64
+      fi
+
+      chmod 755 $child_rootfs/*
+      chmod 777 $child_rootfs/tmp
+
+      chmod 777 $child_rootfs/var/tmp
+
+      chmod 777 $child_rootfs/var/local
+      chmod g+s $child_rootfs/var/local
+      chgrp staff $child_rootfs/var/local
+
+      chmod 777 $child_rootfs/var/lock
+      chmod o+t $child_rootfs/var/lock
+      
+      chmod g+ws $child_rootfs/var/mail
+  fi
   
   return 0
 }
@@ -2343,7 +2443,7 @@ mlc_create_child() {
 	local mother_config="$mlc_conf_dir/$mother_name/config"
 
 
-	MLC_assign_networks $child_id
+        time MLC_assign_networks $child_id
 
 
 	if lxc-info -n $child_name 2>&1 | grep RUNNING ; then 
@@ -2369,20 +2469,23 @@ mlc_create_child() {
 
 
 
-	MLC_install_child $child_rootfs $mother_rootfs
+	time MLC_install_child $child_rootfs $mother_rootfs
 	if [ $? -ne 0 ]; then
 	    echo "failed to install child fs"; return 1
 	fi
 
-	MLC_configure_individual $child_id
+	time MLC_configure_individual $child_id
 	if [ $? -ne 0 ]; then
 	    echo "failed to configure child debian for a container"; return 1
 	fi
 
-	MLC_create_lxc_config  $child_rootfs $child_config $mother_rootfs
+
+	time MLC_create_lxc_config $child_name
 	if [ $? -ne 0 ]; then
 	    echo "failed write childs configuration file: $child_config"; return 1
 	fi
+	
+	echo done
 }
 
 
