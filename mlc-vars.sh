@@ -1987,8 +1987,8 @@ config dev
 #	option dev $mlc_net12_name
 	option dev $mlc_net1_name
 
-config dev
-	option dev $mlc_net2_name
+#config dev
+#	option dev $mlc_net2_name
 
 config 'unicastHna'
         option 'unicastHna' $mlc_ip6_ripe3_prefix:$vm_id::/64

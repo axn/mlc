@@ -54,7 +54,7 @@ lxc-stop -n $mother_name -k || echo "already stopped"
 #rm -rf $mother_config
 
 mkdir -p $mother_config
-lxc-create -n $mother_name -t debian -P $mlc_conf_dir -- --arch=$mlc_arch --release=$mlc_debian_suite --enable-non-free --packages=$(echo $mlc_deb_packages | sed 's/ /,/g')
+lxc-create -n $mother_name -t debian -P $mlc_conf_dir -- --arch=$mlc_arch --release=$mlc_debian_suite --enable-non-free --packages=$(echo $mlc_deb_packages | sed 's/ /,/g') || echo "Failed! Maybe already existing!"
 
 
 MLC_configure_individual $mlc_mother_id
@@ -79,7 +79,9 @@ fi
 
 ####################################################
 ####################################################
-lxc-start  -n $mother_name
+
+./mlc-init-host.sh
+#lxc-start  -n $mother_name
 
 lxc-attach -n $mother_name aptitude update
 lxc-attach -n $mother_name -- aptitude --assume-yes upgrade
