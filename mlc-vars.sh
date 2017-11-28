@@ -51,8 +51,8 @@ mlc_mount_dirs=
 #mlc_copy_dirs="etc home root selinux srv tmp var/spool var/www "
 #mlc_mount_dirs="bin boot lib opt sbin usr  var/backups var/cache var/lib"
 
-mlc_empty_dirs="media mnt opt proc run run/mount sys var/backups var/local var/log var/mail "
-mlc_copy_dirs="dev etc home root selinux srv tmp lib64 var/lock var/run var/spool var/tmp var/www "
+mlc_empty_dirs="dev media mnt opt proc run run/mount sys var/backups var/local var/log var/mail "
+mlc_copy_dirs="etc home root selinux srv tmp lib64 var/lock var/run var/spool var/tmp var/www "
 mlc_mount_dirs="sbin bin usr boot lib var/cache var/lib "
 
 
@@ -372,6 +372,7 @@ MLC_assign_networks $mlc_node
 
 mlc_deb_packages="\
 aptitude \
+ca-certificates \
 ifupdown \
 netbase \
 net-tools \
@@ -408,7 +409,7 @@ texinfo \
 
 mlc_sources="\
 uci-0.7.5::http://downloads.openwrt.org/sources/uci-0.7.5.tar.gz \
-mbedtls-2.4.0-gpl::https://tls.mbed.org/download/mbedtls-2.4.0-gpl.tgz \
+mbedtls-2.4.0::https://tls.mbed.org/download/mbedtls-2.4.0-gpl.tgz \
 olsrd-0.9.6::http://www.olsr.org/releases/0.9/olsrd-0.9.6.tar.gz \
 babeld-1.8.0::http://www.pps.jussieu.fr/~jch/software/files/babeld-1.8.0.tar.gz \
 "
@@ -1958,8 +1959,8 @@ cat <<EOF > $vm_rootfs/etc/config/bmx7
 config 'plugin'
         option 'plugin' 'bmx7_config.so'
 
-config 'plugin'
-        option 'plugin' 'bmx7_json.so'
+#config 'plugin'
+#        option 'plugin' 'bmx7_json.so'
 
 config 'plugin'
        option 'plugin' 'bmx7_sms.so'
@@ -1987,7 +1988,7 @@ config dev
 	option dev $mlc_net1_name
 
 config dev
-	option dev $mlc_net22_name
+	option dev $mlc_net2_name
 
 config 'unicastHna'
         option 'unicastHna' $mlc_ip6_ripe3_prefix:$vm_id::/64
@@ -2234,7 +2235,9 @@ lxc.devttydir =
 ## rtc
 lxc.cgroup.devices.allow = c 254:0 rm
 ## tun
+lxc.mount.entry = /dev/net dev/net none bind,create=dir
 lxc.cgroup.devices.allow = c 10:200 rwm
+# lxc.hook.autodev = sh -c "modprobe tun; mkdir $child_rootfs/dev/net; mknod $child_rootfs/dev/net/tun c 10 200; chmod 0666 $child_rootfs/dev/net/tun"
 ## hpet
 lxc.cgroup.devices.allow = c 10:228 rwm
 ## kvm

@@ -50,11 +50,11 @@ printf "creating %s in %s\n" $mother_name $mother_config
 #export SUITE="$mlc_debian_suite"
 #export ARCH="$mlc_arch"
 
-lxc-stop -n $mother_name || echo "already stopped"
-rm -rf $mother_config
+lxc-stop -n $mother_name -k || echo "already stopped"
+#rm -rf $mother_config
 
 mkdir -p $mother_config
-lxc-create -n $mother_name -t debian -P $mlc_conf_dir -- --arch=$mlc_arch --release=$mlc_debian_suite --enable-non-free --packages=$(echo $mlc_deb_packages | sed 's/ /,/g') || echo failed
+lxc-create -n $mother_name -t debian -P $mlc_conf_dir -- --arch=$mlc_arch --release=$mlc_debian_suite --enable-non-free --packages=$(echo $mlc_deb_packages | sed 's/ /,/g')
 
 
 MLC_configure_individual $mlc_mother_id
@@ -127,6 +127,7 @@ cat <<EOF >  $mother_rootfs/root/.ssh/authorized_keys
 $mlc_pub_key
 EOF
 
+
 lxc-attach -n $mother_name -- /etc/init.d/ssh restart
 
 
@@ -134,17 +135,17 @@ for project in $mlc_sources; do
     project_name="$(echo $project | awk -F'::' '{print $1}')"
     project_repo="$(echo $project | awk -F'::' '{print $2}')"
     lxc-attach -n $mother_name -- wget -c --tries=10 --directory-prefix=/usr/src $project_repo
-    lxc-attach -n $mother_name -- tar -C /usr/src -xzvf $project_name.t*gz 
+    lxc-attach -n $mother_name -- tar -C /usr/src -xzvf /usr/src/$project_name.tar.gz ||\
+    lxc-attach -n $mother_name -- tar -C /usr/src -xzvf /usr/src/$project_name-gpl.tgz
     lxc-attach -n $mother_name -- make clean all install -C /usr/src/$project_name WOPTS="-pedantic -Wall"
-    
-    
 done
 
 for project in $mlc_gits; do
     project_name="$(echo $project | awk -F'::' '{print $1}')"
     project_repo="$(echo $project | awk -F'::' '{print $2}')"
     
-    lxc-attach -n $mother_name -- git clone  $project_repo usr/src/$project_name
+    lxc-attach -n $mother_name -- git clone $project_repo usr/src/$project_name
+    lxc-attach -n $mother_name -- git -C usr/src/$project_name checkout bmx7
     lxc-attach -n $mother_name -- make -C /usr/src/$project_name clean_all build_all install_all EXTRA_CFLAGS="-pg -DPROFILING -DCORE_LIMIT=20000 -DTRAFFIC_DUMP -DCRYPTLIB=MBEDTLS_2_4_0"
 done
 
