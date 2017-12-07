@@ -40,7 +40,7 @@ mlc_conf_dir="/var/lib/lxc"
 
 mlc_owrt_fs_tgz="/usr/src/openwrt/13f/qmpfw-gsoc.git/build/alix/bin/x86/openwrt-x86-generic-rootfs.tar.gz"
 
-mlc_arch="amd64" # i386 (for i686)  or  amd64 (for x86_64), or nothing for autodetection
+mlc_arch="i386" # i386 (for i686)  or  amd64 (for x86_64), or nothing for autodetection
 mlc_debian_suite="stretch" # squeeze, lenny, wheezy, sid.  Or check whats available on: http://cdn.debian.net/debian/
 
 mlc_empty_dirs=

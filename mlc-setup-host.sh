@@ -24,8 +24,10 @@
 set -x
 set -e
 
-#apt-get update
-apt-get install lxc lxc-templates ipcalc
+apt-get update
+apt-get install lxc1 lxc-templates ipcalc ebtables aptitude
+aptitude update
+aptitude upgrade
 
 
 if [ -f ./mlc-vars.sh ] ; then
@@ -51,10 +53,10 @@ printf "creating %s in %s\n" $mother_name $mother_config
 #export ARCH="$mlc_arch"
 
 lxc-stop -n $mother_name -k || echo "already stopped"
-#rm -rf $mother_config
+rm -rf $mother_config
 
 mkdir -p $mother_config
-lxc-create -n $mother_name -t debian -P $mlc_conf_dir -- --arch=$mlc_arch --release=$mlc_debian_suite --enable-non-free --packages=$(echo $mlc_deb_packages | sed 's/ /,/g') || echo "Failed! Maybe already existing!"
+lxc-create -n $mother_name -t debian -P $mlc_conf_dir -- --arch=$mlc_arch --release=$mlc_debian_suite --enable-non-free --packages=$(echo $mlc_deb_packages | sed 's/ /,/g')
 
 
 MLC_configure_individual $mlc_mother_id
