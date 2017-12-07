@@ -25,9 +25,10 @@ set -x
 set -e
 
 apt-get update
-apt-get install lxc1 lxc-templates ipcalc ebtables aptitude
+apt-get install aptitude 
 aptitude update
 aptitude upgrade
+aptitude install lxc1 lxc-templates ipcalc ebtables bridge-utils
 
 
 if [ -f ./mlc-vars.sh ] ; then
