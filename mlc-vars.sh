@@ -415,7 +415,7 @@ babeld-1.8.0::http://www.pps.jussieu.fr/~jch/software/files/babeld-1.8.0.tar.gz 
 "
 
 mlc_gits=" \
-bmx6.git::https://github.com/axn/bmx6.git \
+bmx6.git::https://github.com/bmx-routing/bmx7.git \
 "
 
 

@@ -150,7 +150,6 @@ for project in $mlc_gits; do
     project_repo="$(echo $project | awk -F'::' '{print $2}')"
     
     lxc-attach -n $mother_name -- git clone $project_repo usr/src/$project_name
-    lxc-attach -n $mother_name -- git -C usr/src/$project_name checkout bmx7
     lxc-attach -n $mother_name -- make -C /usr/src/$project_name clean_all build_all install_all EXTRA_CFLAGS="-pg -DPROFILING -DCORE_LIMIT=20000 -DTRAFFIC_DUMP -DCRYPTLIB=MBEDTLS_2_4_0"
 done
 
