@@ -47,12 +47,14 @@ mlc_configure_grid 1
 
 8. Execute bmx7 in all containers
 <pre>
-mlc_loop -1 1000 -a 1029 -e "bmx7"
+mlc_loop -i 1000 -a 1029 -e "bmx7"
 </pre>
 
 9. Attach to container mlc1000 and get bmx7 debug info to monitor the network converging...
 <pre>
-lxc-attach -n mlc1000 -- bmx7 -lc show=status show=interfaces show=links show=originators
+lxc-attach -n mlc1000 -- bmx7 -lc parameters show=status show=interfaces show=links show=originators
+# or retrieve just individual perspectives in non-loop mode:
+lxc-attach -n mlc1000 -- bmx7 -c parameters show=tunnels
 </pre>
 On my 3Ghz Intel Dual core notebook it takes about 2 minutes to converge
 even 100 nodes at high CPU load, then stabilizes around 40% CPU load.
