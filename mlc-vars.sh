@@ -408,14 +408,14 @@ texinfo \
 "
 
 mlc_sources="\
-uci-0.7.5::http://downloads.openwrt.org/sources/uci-0.7.5.tar.gz \
 mbedtls-2.4.0::https://tls.mbed.org/download/mbedtls-2.4.0-gpl.tgz \
 olsrd-0.9.6::http://www.olsr.org/releases/0.9/olsrd-0.9.6.tar.gz \
 babeld-1.8.0::http://www.pps.jussieu.fr/~jch/software/files/babeld-1.8.0.tar.gz \
 "
 
 mlc_gits=" \
-bmx6.git::https://github.com/bmx-routing/bmx7.git \
+uci.git::https://github.com/axn/uci-0.7.5.git \
+bmx7.git::https://github.com/bmx-routing/bmx7.git \
 "
 
 
@@ -2501,19 +2501,13 @@ mlc_destroy() {
 
 	MLC_assign_networks $child_id
 
-	if ! lxc-info -n $child_name | grep STOPPED ; then 
+	if lxc-info -n $child_name | grep RUNNING ; then
 	    echo "specified container $child_name must be stopped first"; return 1
 	fi
 
 
 	local vm_rootfs=$mlc_conf_dir/$child_name/rootfs
 	local vm_config=$mlc_conf_dir/$child_name
-
-	if [ ! -d "$vm_rootfs" ]; then
-	    echo "rootfs for $child_name does not exist"
-	else
-	    rm -rf --preserve-root $vm_rootfs
-	fi
 
 
 	if [ ! -d "$vm_config" ]; then
