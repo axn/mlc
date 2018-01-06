@@ -96,7 +96,7 @@ export LC_ALL="$mlc_lang"
 mlc_mac_prefix="a0:cd:ef"
 mlc_net_mtu="1500"
 
-mlc_dns="141.1.1.1"
+mlc_dns="8.8.4.4"
 mlc_node="22"
 
 mlc_ip4_prefix0="10"
@@ -104,6 +104,7 @@ mlc_admin_idx="0"
 
 mlc_ip4_admin_prefix1="000"
 mlc_ip4_admin_netmask="255.224.0.0"
+mlc_ip4_admin_netmask="255.255.0.0"
 mlc_ip4_admin_broadcast="10.031.255.255"
 mlc_ip4_admin_gateway="10.0.0.1"
 
@@ -377,6 +378,7 @@ ifupdown \
 netbase \
 net-tools \
 iproute vlan bridge-utils \
+iptables \
 openssh-server \
 iputils-ping \
 vim nano less \
@@ -392,6 +394,7 @@ build-essential gdb file subversion git-core \
 lynx \
 telnet \
 tcpdump \
+wireshark-common \
 mtr traceroute \
 psmisc lsof \
 iptraf  netcat iperf  \
@@ -416,6 +419,7 @@ babeld-1.8.0::http://www.pps.jussieu.fr/~jch/software/files/babeld-1.8.0.tar.gz 
 mlc_gits=" \
 uci.git::https://github.com/axn/uci-0.7.5.git \
 bmx7.git::https://github.com/bmx-routing/bmx7.git \
+oonf.git::https://github.com/OLSR/OONF.git \
 "
 
 
@@ -1653,23 +1657,24 @@ auto  $mlc_net1_name
 iface $mlc_net1_name inet static
   mtu $mlc_net_mtu
 
-#auto  $mlc_net11_name
-#iface $mlc_net11_name inet static
-#  address $mlc_net11_ip4_addr
-#  netmask $mlc_net11_ip4_mask
-#  broadcast $mlc_net11_ip4_brc
-#  vlan_raw_device $mlc_net1_name
-#  up /sbin/ip -6 addr add $mlc_net11_ula_addr/$mlc_net11_ula_mask dev $mlc_net11_name
+auto  $mlc_net11_name
+iface $mlc_net11_name inet static
+  address $mlc_net11_ip4_addr
+  netmask $mlc_net11_ip4_mask
+  broadcast $mlc_net11_ip4_brc
+  vlan_raw_device $mlc_net1_name
+  up /sbin/ip -6 addr add $mlc_net11_ula_addr/$mlc_net11_ula_mask dev $mlc_net11_name
 #  up /sbin/ip -6 addr add $mlc_net11_rip_addr/$mlc_net11_rip_mask dev $mlc_net11_name
 
-#auto  $mlc_net12_name
-#iface $mlc_net12_name inet static
-#  address $mlc_net12_ip4_addr
-#  netmask $mlc_net12_ip4_mask
-#  broadcast $mlc_net12_ip4_brc
-#  vlan_raw_device $mlc_net1_name
-#  up /sbin/ip -6 addr add $mlc_net12_ula_addr/$mlc_net12_ula_mask dev $mlc_net12_name
-##  up /sbin/ip -6 addr add $mlc_net12_rip_addr/$mlc_net12_rip_mask dev $mlc_net12_name
+auto  $mlc_net12_name
+iface $mlc_net12_name inet static
+  address $mlc_net12_ip4_addr
+  netmask $mlc_net12_ip4_mask
+  broadcast $mlc_net12_ip4_brc
+  vlan_raw_device $mlc_net1_name
+  up /sbin/ip -6 addr add $mlc_net12_ula_addr/$mlc_net12_ula_mask dev $mlc_net12_name
+#  up /sbin/ip -6 addr add $mlc_net12_rip_addr/$mlc_net12_rip_mask dev $mlc_net12_name
+
 #
 #auto  $mlc_net13_name
 #iface $mlc_net13_name inet static
@@ -2138,13 +2143,13 @@ lxc.network.mtu = $mlc_net_mtu
 lxc.network.hwaddr = $mlc_net1_mac
 lxc.network.veth.pair = $mlc_net1_veth
 
-lxc.network.type = veth
-lxc.network.flags = up
-lxc.network.link = $mlc_net2_link
-lxc.network.name = $mlc_net2_name
-lxc.network.mtu = $mlc_net_mtu
-lxc.network.hwaddr = $mlc_net2_mac
-lxc.network.veth.pair = $mlc_net2_veth
+#lxc.network.type = veth
+#lxc.network.flags = up
+#lxc.network.link = $mlc_net2_link
+#lxc.network.name = $mlc_net2_name
+#lxc.network.mtu = $mlc_net_mtu
+#lxc.network.hwaddr = $mlc_net2_mac
+#lxc.network.veth.pair = $mlc_net2_veth
 
 
 # Common configuration

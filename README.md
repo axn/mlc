@@ -47,7 +47,7 @@ mlc_configure_grid 1
 
 8. Execute bmx7 in all containers
 <pre>
-mlc_loop -i 1000 -a 1029 -e "bmx7"
+mlc_loop -i 1000 -a 1029 -e "bmx7 dev=eth1.11"
 </pre>
 
 9. Attach to container mlc1000 and get bmx7 debug info to monitor the network converging...
@@ -66,25 +66,57 @@ takes 9 hops:
 <pre>
 lxc-attach -n mlc1000 -- traceroute6 fd70:1191:c909:1e4e:4c9c:4d4a:33eb:b09b
 
-traceroute to fd70:1191:c909:1e4e:4c9c:4d4a:33eb:b09b
-(fd70:1191:c909:1e4e:4c9c:4d4a:33eb:b09b), 30 hops max, 80 byte packets
- 1  fd70:166:2d16:1ff6:253f:d0bc:1558:d89a
-(fd70:166:2d16:1ff6:253f:d0bc:1558:d89a)  0.110 ms  0.048 ms  0.046 ms
- 2  fd70:aad9:c0f5:8c20:a082:a462:a859:210d
-(fd70:aad9:c0f5:8c20:a082:a462:a859:210d)  0.068 ms  0.051 ms  0.051 ms
- 3  fd70:dd57:b855:3cdf:b057:10cc:2a93:c19
-(fd70:dd57:b855:3cdf:b057:10cc:2a93:c19)  0.071 ms  0.056 ms  0.057 ms
- 4  fd70:369c:6293:4199:c156:3bb8:2c6a:e3aa
-(fd70:369c:6293:4199:c156:3bb8:2c6a:e3aa)  0.076 ms  0.063 ms  0.062 ms
- 5  fd70:be5:272c:703e:822a:e0c5:5d6c:587d
-(fd70:be5:272c:703e:822a:e0c5:5d6c:587d)  0.083 ms  0.068 ms  0.067 ms
- 6  fd70:ddc8:e9ef:4ff0:385e:b034:6fd0:b5f
-(fd70:ddc8:e9ef:4ff0:385e:b034:6fd0:b5f)  0.089 ms  0.178 ms  0.081 ms
- 7  fd70:6f59:35d:ae9b:1d55:3066:b3f9:74c7
-(fd70:6f59:35d:ae9b:1d55:3066:b3f9:74c7)  0.098 ms  0.080 ms  0.080 ms
- 8  fd70:bf33:5a96:889d:eedd:767b:6ca9:42fb
-(fd70:bf33:5a96:889d:eedd:767b:6ca9:42fb)  0.105 ms  0.121 ms  0.136 ms
- 9  fd70:1191:c909:1e4e:4c9c:4d4a:33eb:b09b
-(fd70:1191:c909:1e4e:4c9c:4d4a:33eb:b09b)  0.084 ms  0.067 ms  0.060 ms
+traceroute to fd70:1191:c909:1e4e:4c9c:4d4a:33eb:b09b (fd70:1191:c909:1e4e:4c9c:4d4a:33eb:b09b), 30 hops max, 80 byte packets 
+ 1  fd70:166:2d16:1ff6:253f:d0bc:1558:d89a  (fd70:166:2d16:1ff6:253f:d0bc:1558:d89a)  0.110 ms  0.048 ms  0.046 ms
+ 2  fd70:aad9:c0f5:8c20:a082:a462:a859:210d (fd70:aad9:c0f5:8c20:a082:a462:a859:210d)  0.068 ms  0.051 ms  0.051 ms
+...
+ 9  fd70:1191:c909:1e4e:4c9c:4d4a:33eb:b09b (fd70:1191:c909:1e4e:4c9c:4d4a:33eb:b09b)  0.084 ms  0.067 ms  0.060 ms
 </pre>
+
+
+
+
+11. start also olsrd2 in some nodes
+
+<pre>
+mlc_loop -a 1029 -e "olsrd2_static --set=global.fork=1 --set=interface.multicast_v4=- eth1.12"
+</pre>
+
+
+
+
+xx. Use wireshark to inspect overhead and performance:
+
+filter on 1011_1
+BMX7  filter: (eth.src == a0:cd:ef:10:00:01) && (udp.srcport == 6270)
+olsr2 filter: (eth.src == a0:cd:ef:10:00:01) && (udp.srcport == 269)
+
+# add unicast hnas to bmx7 descriptions
+for i in $(seq 1000 1079); do mlc_loop -i $i -e "bmx7 -c u=$(mlc_loop -i $i -e "ip a show dev eth1.11" | grep fd01 | cut -d' ' -f6 | cut -d '/' -f1)/128"; done
+
+root@mlc1000:~# watch -n1 timeout 0.3 traceroute6 -n fd02::a0cd:ef10:2901:0:1 # olsr2
+root@mlc1000:~# watch -n1 timeout 0.3 traceroute6 -n fd01::a0cd:ef10:2901:0:1 # bmx7
+
+mlc_link_set 1 1050 1 1059 3 3
+mlc_link_set 1 1050 1 1059 0 0
+
+mlc_loop -a 1079 -e "bmx7 -c linkWindow=5 linkTimeout=10000"
+
+
+root@mlc1059:~#
+ip6tables -I FORWARD -o eth1.11 -d fd01::a0cd:ef10:2901:0:1 -j DROP
+ip6tables -I FORWARD -o eth1.12 -d fd02::a0cd:ef10:2901:0:1 -j DROP
+ip6tables -L -nv
+ip6tables -F
+
+
+on mlc1029 (and mlc1000):
+for k in $(bmx7 -c show=keys | cut -d' ' -f2); do bmx7 -c setTrustedNode=$k; done
+bmx7 -c trustedNodesDir=/etc/bmx7/trustedNodes/
+bmx7 -c setTrustedNode=-$(bmx7 -c show=keys | grep mlc1059 | cut -d' ' -f2)
+
+
+   
+
+
 

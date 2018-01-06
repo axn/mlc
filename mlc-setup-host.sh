@@ -29,7 +29,22 @@ if true; then
     apt-get install aptitude 
     aptitude update
     aptitude upgrade
-    aptitude install lxc1 lxc-templates ipcalc ebtables bridge-utils
+    aptitude install --assume-yes lxc1 lxc-templates ipcalc ebtables bridge-utils wireshark screen git-core openssh-server
+
+
+    if [ -f /etc/screenrc ] && ! grep -qe "screen /bin/bash" /etc/screenrc; then
+	cat <<EOF >> /etc/screen
+screen
+screen /bin/bash -c 'screen -X caption always " %{Wk}%?%F%{WK}%? %n %t %h %{r}mlc@%H  %{g}%c:%s %d/%m/%y  %{w}%w %{R}%u"'
+EOF
+    fi
+
+    echo "use password: 'mlc'. And type enter for all other questions."
+    adduser mlc || true
+    adduser mlc sudo || true
+    adduser mlc wireshark || true
+
+    su -c 'ssh-keygen -f ~/.ssh/id_rsa -P ""' mlc
 fi
 
 if [ -f ./mlc-vars.sh ] ; then
@@ -61,12 +76,13 @@ if true; then
 	    lxc-stop -n $s -k || echo "container $s already stopped"
 	fi
     done
-    
-    rm -r --preserve-root $mlc_conf_dir/$mlc_name_prefix*
 
-    mkdir -p $mother_config
-    lxc-create -n $mother_name -t debian -P $mlc_conf_dir -- --arch=$mlc_arch --release=$mlc_debian_suite --enable-non-free --packages=$(echo $mlc_deb_packages | sed 's/ /,/g')
+    if true; then
+	rm -r --preserve-root $mlc_conf_dir/$mlc_name_prefix*
 
+	mkdir -p $mother_config
+	lxc-create -n $mother_name -t debian -P $mlc_conf_dir -- --arch=$mlc_arch --release=$mlc_debian_suite --enable-non-free --packages=$(echo $mlc_deb_packages | sed 's/ /,/g')
+    fi
 
     MLC_configure_individual $mlc_mother_id
     if [ $? -ne 0 ]; then
@@ -136,39 +152,47 @@ EOF
 
     # configure the public key:
     mkdir -p $mother_rootfs/root/.ssh
-    cat <<EOF >  $mother_rootfs/root/.ssh/authorized_keys
-$mlc_pub_key
-EOF
+    echo "$mlc_pub_key"            >  $mother_rootfs/root/.ssh/authorized_keys
+    cat /home/mlc/.ssh/id_rsa.pub >>  $mother_rootfs/root/.ssh/authorized_keys
 
 
     lxc-attach -n $mother_name -- /etc/init.d/ssh restart
 
     lxc-attach -n $mother_name -- mkdir -p /lib64
 
-    for project in $mlc_sources; do
-	project_name="$(echo $project | awk -F'::' '{print $1}')"
-	project_repo="$(echo $project | awk -F'::' '{print $2}')"
-	lxc-attach -n $mother_name -- wget -c --tries=10 --directory-prefix=/usr/src $project_repo
-	lxc-attach -n $mother_name -- tar -C /usr/src -xzvf /usr/src/$project_name.tar.gz ||\
-	    lxc-attach -n $mother_name -- tar -C /usr/src -xzvf /usr/src/$project_name-gpl.tgz
-	lxc-attach -n $mother_name -- make clean all install -C /usr/src/$project_name 
-    done
+    if true; then
+	for project in $mlc_sources; do
+	    project_name="$(echo $project | awk -F'::' '{print $1}')"
+	    project_repo="$(echo $project | awk -F'::' '{print $2}')"
+	    lxc-attach -n $mother_name -- wget -c --tries=10 --directory-prefix=/usr/src $project_repo
+	    lxc-attach -n $mother_name -- tar -C /usr/src -xzvf /usr/src/$project_name.tar.gz ||\
+		lxc-attach -n $mother_name -- tar -C /usr/src -xzvf /usr/src/$project_name-gpl.tgz
+	    lxc-attach -n $mother_name -- make clean all install -C /usr/src/$project_name 
+	done
+    fi
+
+    if true; then
+	for project in $mlc_gits; do
+	    project_name="$(echo $project | awk -F'::' '{print $1}')"
+	    project_repo="$(echo $project | awk -F'::' '{print $2}')"
+	    project_make="$(echo $project | awk -F'::' '{print $3}')"
+	    
+	    lxc-attach -n $mother_name -- rm -rf usr/src/$project_name
+	    lxc-attach -n $mother_name -- git clone $project_repo usr/src/$project_name
+	    if echo $project_name | grep -q bmx; then
+		lxc-attach -n $mother_name -- make -C /usr/src/$project_name clean_all build_all install_all EXTRA_CFLAGS="-pg -DPROFILING -DCORE_LIMIT=20000 -DTRAFFIC_DUMP -DCRYPTLIB=MBEDTLS_2_4_0"
+	    elif echo $project_name | grep -q oonf; then
+		# from: http://www.olsr.org/mediawiki/index.php/OLSR.org_Network_Framework#olsrd2
+		lxc-attach -n $mother_name -- cmake /usr/src/$project_name 
+		lxc-attach -n $mother_name -- make -C /usr/src/$project_name/build install
+	    else
+		lxc-attach -n $mother_name -- make -C /usr/src/$project_name clean all install WOPTS="-pedantic -Wall"
+	    fi
+	done
+    fi
 
 fi
 
-for project in $mlc_gits; do
-    project_name="$(echo $project | awk -F'::' '{print $1}')"
-    project_repo="$(echo $project | awk -F'::' '{print $2}')"
-    project_make="$(echo $project | awk -F'::' '{print $3}')"
-    
-    lxc-attach -n $mother_name -- rm -rf usr/src/$project_name
-    lxc-attach -n $mother_name -- git clone $project_repo usr/src/$project_name
-    if echo $project_name | grep -q bmx; then
-	lxc-attach -n $mother_name -- make -C /usr/src/$project_name clean_all build_all install_all EXTRA_CFLAGS="-pg -DPROFILING -DCORE_LIMIT=20000 -DTRAFFIC_DUMP -DCRYPTLIB=MBEDTLS_2_4_0"
-    else
-	lxc-attach -n $mother_name -- make -C /usr/src/$project_name clean all install WOPTS="-pedantic -Wall"
-    fi
-done
 
 true
 false
