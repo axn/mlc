@@ -47,7 +47,7 @@ mlc_configure_grid 1
 
 8. Execute bmx7 in all containers
 <pre>
-mlc_loop -i 1000 -a 1029 -e "bmx7 dev=eth1.11"
+mlc_loop -i 1000 -a 1029 -e "bmx7 -f0 dev=eth1.11"
 </pre>
 
 9. Attach to container mlc1000 and get bmx7 debug info to monitor the network converging...
@@ -80,7 +80,10 @@ traceroute to fd70:1191:c909:1e4e:4c9c:4d4a:33eb:b09b (fd70:1191:c909:1e4e:4c9c:
 
 <pre>
 mlc_loop -a 1029 -e "olsrd2_static --set=global.fork=1 --set=interface.multicast_v4=- eth1.12"
-</pre>
+# mlc_loop -a 1029 -e "babeld -D -w -c /etc/babeld.conf eth1.13" # DOES NOT WORK!
+for i in $(seq 0 29); do $mlc_ssh root@10.0.10.$i "babeld -D -w -c /etc/babeld.conf eth1.13"; done
+
+ </pre>
 
 
 
@@ -90,17 +93,25 @@ xx. Use wireshark to inspect overhead and performance:
 filter on 1011_1
 BMX7  filter: (eth.src == a0:cd:ef:10:00:01) && (udp.srcport == 6270)
 olsr2 filter: (eth.src == a0:cd:ef:10:00:01) && (udp.srcport == 269)
+babel filter: (eth.src == a0:cd:ef:10:00:01) && (udp.srcport == 6696)
 
 # add unicast hnas to bmx7 descriptions
-for i in $(seq 1000 1079); do mlc_loop -i $i -e "bmx7 -c u=$(mlc_loop -i $i -e "ip a show dev eth1.11" | grep fd01 | cut -d' ' -f6 | cut -d '/' -f1)/128"; done
+for i in $(seq 1000 1069); do mlc_loop -i $i -e "bmx7 -c u=$(mlc_loop -i $i -e "ip a show dev eth1.11" | grep fd01 | cut -d' ' -f6 | cut -d '/' -f1)/128"; done
 
-root@mlc1000:~# watch -n1 timeout 0.3 traceroute6 -n fd02::a0cd:ef10:2901:0:1 # olsr2
-root@mlc1000:~# watch -n1 timeout 0.3 traceroute6 -n fd01::a0cd:ef10:2901:0:1 # bmx7
+root@mlc1000:~#
+watch -n1 timeout 0.3 traceroute6 -n fd01::a0cd:ef10:2901:0:1 # bmx7
+watch -n1 timeout 0.3 traceroute6 -n fd02::a0cd:ef10:2901:0:1 # olsr2
+watch -n1 timeout 0.3 traceroute6 -n fd03::a0cd:ef10:2901:0:1 # bmx7
 
+
+root@mlc:
 mlc_link_set 1 1050 1 1059 3 3
 mlc_link_set 1 1050 1 1059 0 0
 
 mlc_loop -a 1079 -e "bmx7 -c linkWindow=5 linkTimeout=10000"
+
+
+while true; do for X in $(seq 20 59); do (mlc_link_set 1 10$X 1 10$((($X + 10))) 0 0; sleep 30; mlc_link_set 1 10$X 1 10$((($X + 10))) 3 3)& sleep 4; done; done
 
 
 root@mlc1059:~#

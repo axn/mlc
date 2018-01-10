@@ -29,7 +29,7 @@ if true; then
     apt-get install aptitude 
     aptitude update
     aptitude upgrade
-    aptitude install --assume-yes lxc1 lxc-templates ipcalc ebtables bridge-utils wireshark screen git-core openssh-server
+    aptitude install --assume-yes lxc1 lxc-templates ipcalc ebtables bridge-utils wireshark screen git-core openssh-server emacs
 
 
     if [ -f /etc/screenrc ] && ! grep -qe "screen /bin/bash" /etc/screenrc; then
@@ -37,6 +37,11 @@ if true; then
 screen
 screen /bin/bash -c 'screen -X caption always " %{Wk}%?%F%{WK}%? %n %t %h %{r}mlc@%H  %{g}%c:%s %d/%m/%y  %{w}%w %{R}%u"'
 EOF
+    fi
+ 
+    hostname mlc
+    if ! [ -f ~/.ssh/id_rsa ]; then
+	ssh-keygen -f ~/.ssh/id_rsa -P ""
     fi
 
     echo "use password: 'mlc'. And type enter for all other questions."
@@ -46,6 +51,96 @@ EOF
 
     su -c 'ssh-keygen -f ~/.ssh/id_rsa -P ""' mlc
 fi
+
+if ! [ -f /home/mlc/.emacs ]; then
+    cat <<EOF >> /home/mlc/.emacs
+; from http://linux-quirks.blogspot.com/2010/02/emacs-mouse-scrolling.html
+; Mouse Wheel Scrolling
+
+; Scroll up five lines without modifiers
+(defun up-slightly () (interactive) (scroll-up 5))
+(defun down-slightly () (interactive) (scroll-down 5))
+(global-set-key [mouse-4] 'down-slightly)
+(global-set-key [mouse-5] 'up-slightly)
+; Scroll up five lines with META held
+(global-set-key [M-mouse-4] 'down-slightly)
+(global-set-key [M-mouse-5] 'up-slightly)
+
+; Scroll up one line with SHIFT held
+(defun up-one () (interactive) (scroll-up 1))
+(defun down-one () (interactive) (scroll-down 1))
+(global-set-key [S-mouse-4] 'down-one)
+(global-set-key [S-mouse-5] 'up-one)
+
+; Scroll up one page with CTRL held
+(defun up-a-lot () (interactive) (scroll-up))
+(defun down-a-lot () (interactive) (scroll-down))
+(global-set-key [C-mouse-4] 'down-a-lot)
+(global-set-key [C-mouse-5] 'up-a-lot)
+
+
+(global-set-key "\M-n" 'up-one) 
+(global-set-key "\M-p" 'down-one)
+
+(global-set-key "\M-N" 'up-slightly) 
+(global-set-key "\M-P" 'down-slightly)
+
+(set-face-attribute 'default nil :height 72)
+
+; (global-set-key "\C-G" ’goto-line)
+
+
+(setq x-select-enable-clipboard t)
+
+EOF
+
+    chown mlc:mlc /home/mlc/.emacs
+fi
+
+
+if ! grep -q mlc /etc/hosts; then
+    cat <<EOF >> /etc/hosts
+10.0.0.2 mlc
+10.0.0.2 mlc0002
+10.0.10.0 m1000
+10.0.10.1 m1001
+10.0.10.2 m1002
+10.0.10.3 m1003
+10.0.10.4 m1004
+10.0.10.5 m1005
+10.0.10.6 m1006
+10.0.10.7 m1007
+10.0.10.8 m1008
+10.0.10.9 m1009
+
+10.0.10.10 m1010
+10.0.10.11 m1011
+10.0.10.12 m1012
+10.0.10.13 m1013
+10.0.10.14 m1014
+10.0.10.15 m1015
+10.0.10.16 m1016
+10.0.10.17 m1017
+10.0.10.18 m1018
+10.0.10.19 m1019
+
+10.0.10.20 m1020
+10.0.10.21 m1021
+10.0.10.22 m1022
+10.0.10.23 m1023
+10.0.10.24 m1024
+10.0.10.25 m1025
+10.0.10.26 m1026
+10.0.10.27 m1027
+10.0.10.28 m1028
+10.0.10.29 m1029
+
+10.0.10.49 m1049
+10.0.10.59 m1059
+10.0.10.69 m1069
+EOF
+fi
+
 
 if [ -f ./mlc-vars.sh ] ; then
     . ./mlc-vars.sh
@@ -153,6 +248,7 @@ EOF
     # configure the public key:
     mkdir -p $mother_rootfs/root/.ssh
     echo "$mlc_pub_key"            >  $mother_rootfs/root/.ssh/authorized_keys
+    cat /root/.ssh/id_rsa.pub     >>  $mother_rootfs/root/.ssh/authorized_keys
     cat /home/mlc/.ssh/id_rsa.pub >>  $mother_rootfs/root/.ssh/authorized_keys
 
 

@@ -1676,13 +1676,13 @@ iface $mlc_net12_name inet static
 #  up /sbin/ip -6 addr add $mlc_net12_rip_addr/$mlc_net12_rip_mask dev $mlc_net12_name
 
 #
-#auto  $mlc_net13_name
-#iface $mlc_net13_name inet static
-#  address $mlc_net13_ip4_addr
-#  netmask $mlc_net13_ip4_mask
-#  broadcast $mlc_net13_ip4_brc
-#  vlan_raw_device $mlc_net1_name
-#  up /sbin/ip -6 addr add $mlc_net13_ula_addr/$mlc_net13_ula_mask dev $mlc_net13_name
+auto  $mlc_net13_name
+iface $mlc_net13_name inet static
+  address $mlc_net13_ip4_addr
+  netmask $mlc_net13_ip4_mask
+  broadcast $mlc_net13_ip4_brc
+  vlan_raw_device $mlc_net1_name
+  up /sbin/ip -6 addr add $mlc_net13_ula_addr/$mlc_net13_ula_mask dev $mlc_net13_name
 ##  up /sbin/ip -6 addr add $mlc_net13_rip_addr/$mlc_net13_rip_mask dev $mlc_net13_name
 
 
