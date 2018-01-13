@@ -15,16 +15,19 @@ git clone https://github.com/axn/mlc.git mlc.git
 cd mlc.git
 </pre>
 
+
 2. Become root:
 <pre>
 sudo su
 </pre>
+
 
 3. Source MLC to your bash environment
 <pre>
 cd /home/mlc/mlc.git # assuming mlc was installed here.
 . ./mlc-vars.sh
 </pre>
+
 
 4. Setup your local host & prepare a simple debian container system:
 <pre>
@@ -36,25 +39,30 @@ less mlc-setup-host.sh # check what is done here...
 - For Dumpcap support for non-super users choose: yes
 (Once this completed only ./mlc-init-host.sh would be needed after any system reboot)
 
+
 5. Create 30 containers called mlc1000... mlc1029:
 <pre>
 mlc_loop -i 1000 -a 1029 -c
 </pre>
+
 
 6. Boot them:
 <pre>
 mlc_loop -i 1000 -a 1029 -b
 </pre>
 
+
 7. Create a 10x3 grid network among them using bridge mbr1 (eth1 inside containers)
 <pre>
 mlc_configure_grid 1
 </pre>
 
+
 8. Execute bmx7 in all containers
 <pre>
 mlc_loop -i 1000 -a 1029 -e "bmx7 -f0 dev=eth1.11"
 </pre>
+
 
 9. Attach to container mlc1000 and get bmx7 debug info to monitor the network converging...
 <pre>
@@ -65,7 +73,8 @@ lxc-attach -n mlc1000 -- bmx7 -c parameters show=tunnels
 On my 3Ghz Intel Dual core notebook it takes about 2 minutes to converge
 even 100 nodes at high CPU load, then stabilizes around 40% CPU load.
 
-10. copy and paste Crypto IPv6 from mlc1019 (seen via previous command) one can
+
+10. Copy and paste Crypto IPv6 from mlc1019 (seen via previous command) one can
 verify that pinging from top left node mlc1000 to top right node mlc1009
 takes 9 hops:
 
@@ -80,53 +89,56 @@ traceroute to fd70:1191:c909:1e4e:4c9c:4d4a:33eb:b09b (fd70:1191:c909:1e4e:4c9c:
 </pre>
 
 
-
-
-11. start also olsrd2 in some nodes
+11. Start also olsrd2 and babeld in nodes:
 
 <pre>
 mlc_loop -a 1029 -e "olsrd2_static --set=global.fork=1 --set=interface.multicast_v4=- eth1.12"
-# mlc_loop -a 1029 -e "babeld -D -w -c /etc/babeld.conf eth1.13" # DOES NOT WORK!
-for i in $(seq 0 29); do $mlc_ssh root@10.0.10.$i "babeld -D -w -c /etc/babeld.conf eth1.13"; done
+mlc_loop -a 1029 -e "babeld -D -w -c /etc/babeld.conf eth1.13"
 </pre>
 
 
 
-
-xx. Use wireshark to inspect overhead and performance:
+12. Do some more advanced experiments:
 
 <pre>
-filter on 1011_1
-BMX7  filter: (eth.src == a0:cd:ef:10:00:01) && (udp.srcport == 6270)
-olsr2 filter: (eth.src == a0:cd:ef:10:00:01) && (udp.srcport == 269)
-babel filter: (eth.src == a0:cd:ef:10:00:01) && (udp.srcport == 6696)
+# Apply some wireshark statistics filter to observe protocol overhead:
+# filter on 1011_1
+# BMX7  filter: (eth.src == a0:cd:ef:10:00:01) && (udp.srcport == 6270)
+# olsr2 filter: (eth.src == a0:cd:ef:10:00:01) && (udp.srcport == 269)
+# babel filter: (eth.src == a0:cd:ef:10:00:01) && (udp.srcport == 6696)
 
-# add unicast hnas to bmx7 descriptions
+# Add unicast hnas to bmx7 descriptions
 for i in $(seq 1000 1069); do mlc_loop -i $i -e "bmx7 -c u=$(mlc_loop -i $i -e "ip a show dev eth1.11" | grep fd01 | cut -d' ' -f6 | cut -d '/' -f1)/128"; done
 
+# Monitor path between two e2e nodes:
 root@mlc1000:~#
 watch -n1 timeout 0.3 traceroute6 -n fd01::a0cd:ef10:2901:0:1 # bmx7
 watch -n1 timeout 0.3 traceroute6 -n fd02::a0cd:ef10:2901:0:1 # olsr2
 watch -n1 timeout 0.3 traceroute6 -n fd03::a0cd:ef10:2901:0:1 # bmx7
 
 
+# Set links on and off:
 root@mlc:
 mlc_link_set 1 1050 1 1059 3 3
 mlc_link_set 1 1050 1 1059 0 0
 
+# Tune Bmx7 link-discovery:
 mlc_loop -a 1079 -e "bmx7 -c linkWindow=5 linkTimeout=10000"
 
-
+# Start some topology dynamics:
 while true; do for X in $(seq 20 59); do (mlc_link_set 1 10$X 1 10$((($X + 10))) 0 0; sleep 30; mlc_link_set 1 10$X 1 10$((($X + 10))) 3 3)& sleep 4; done; done
 
 
+# Enable some malicious behavior. Drop packets towards mlc1029:
 root@mlc1059:~#
 ip6tables -I FORWARD -o eth1.11 -d fd01::a0cd:ef10:2901:0:1 -j DROP
 ip6tables -I FORWARD -o eth1.12 -d fd02::a0cd:ef10:2901:0:1 -j DROP
+ip6tables -I FORWARD -o eth1.13 -d fd03::a0cd:ef10:2901:0:1 -j DROP
 ip6tables -L -nv
 ip6tables -F
 
 
+# Let Bmx7 distrust a known malicious node:
 on mlc1029 (and mlc1000):
 for k in $(bmx7 -c show=keys | cut -d' ' -f2); do bmx7 -c setTrustedNode=$k; done
 bmx7 -c trustedNodesDir=/etc/bmx7/trustedNodes/

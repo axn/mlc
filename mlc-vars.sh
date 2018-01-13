@@ -394,7 +394,6 @@ build-essential gdb file subversion git-core \
 lynx \
 telnet \
 tcpdump \
-wireshark-common \
 mtr traceroute \
 psmisc lsof \
 iptraf  netcat iperf  \
@@ -607,8 +606,8 @@ mlc_loop() {
 	  mlc_cpu_sleep_until_idle  &&  sync  && $loop_pretend MLC_loop_boot $node
       [ "$loop_stop" == "1" ]    && echo "stopping   $loop_name" && $loop_pretend lxc-stop -kn $mlc_name_prefix$node #-t 1
       [ "$loop_destroy" == "1" ] && echo "destroying $loop_name" && $loop_pretend mlc_destroy $node
-#     [ "$loop_exec" != "0" ]    && echo "executing  $loop_name $loop_exec" && $loop_pretend $mlc_ssh root@"$(MLC_calc_ip4 $mlc_ip4_admin_prefix1 $node $mlc_admin_idx )" $loop_exec
-      [ "$loop_exec" != "0" ]    && echo "executing  $loop_name $loop_exec" && $loop_pretend lxc-attach -n $loop_name -- $loop_exec
+      [ "$loop_exec" != "0" ]    && echo "executing  $loop_name $loop_exec" && $loop_pretend $mlc_ssh root@"$(MLC_calc_ip4 $mlc_ip4_admin_prefix1 $node $mlc_admin_idx )" $loop_exec
+#     [ "$loop_exec" != "0" ]    && echo "executing  $loop_name $loop_exec" && $loop_pretend lxc-attach -n $loop_name -- $loop_exec
   done
 
   [ "$loop_boot" == "1" ]    &&  $loop_pretend  mlc_veth_obtain

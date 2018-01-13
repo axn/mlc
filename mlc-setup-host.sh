@@ -30,10 +30,12 @@ if true; then
     aptitude update
     aptitude upgrade
     aptitude install --assume-yes lxc1 lxc-templates ipcalc ebtables bridge-utils wireshark screen git-core openssh-server emacs
+fi
 
 
+if true; then
     if [ -f /etc/screenrc ] && ! grep -qe "screen /bin/bash" /etc/screenrc; then
-	cat <<EOF >> /etc/screen
+	cat <<EOF >> /etc/screenrc
 screen
 screen /bin/bash -c 'screen -X caption always " %{Wk}%?%F%{WK}%? %n %t %h %{r}mlc@%H  %{g}%c:%s %d/%m/%y  %{w}%w %{R}%u"'
 EOF
@@ -49,7 +51,9 @@ EOF
     adduser mlc sudo || true
     adduser mlc wireshark || true
 
-    su -c 'ssh-keygen -f ~/.ssh/id_rsa -P ""' mlc
+    if ! [ -f /home/mlc/.ssh/id_rsa ]; then
+        su -c 'ssh-keygen -f ~/.ssh/id_rsa -P ""' mlc
+    fi
 fi
 
 if ! [ -f /home/mlc/.emacs ]; then
@@ -173,7 +177,7 @@ if true; then
     done
 
     if true; then
-	rm -r --preserve-root $mlc_conf_dir/$mlc_name_prefix*
+	rm -rf --preserve-root $mlc_conf_dir/$mlc_name_prefix*
 
 	mkdir -p $mother_config
 	lxc-create -n $mother_name -t debian -P $mlc_conf_dir -- --arch=$mlc_arch --release=$mlc_debian_suite --enable-non-free --packages=$(echo $mlc_deb_packages | sed 's/ /,/g')
@@ -279,10 +283,11 @@ EOF
 		lxc-attach -n $mother_name -- make -C /usr/src/$project_name clean_all build_all install_all EXTRA_CFLAGS="-pg -DPROFILING -DCORE_LIMIT=20000 -DTRAFFIC_DUMP -DCRYPTLIB=MBEDTLS_2_4_0"
 	    elif echo $project_name | grep -q oonf; then
 		# from: http://www.olsr.org/mediawiki/index.php/OLSR.org_Network_Framework#olsrd2
-		lxc-attach -n $mother_name -- cmake /usr/src/$project_name 
-		lxc-attach -n $mother_name -- make -C /usr/src/$project_name/build install
-	    else
+		$mlc_ssh root@mlc "cd /usr/src/oonf.git/build && cmake .. && make install"
+	    elif echo $project_name | grep -q uci; then
 		lxc-attach -n $mother_name -- make -C /usr/src/$project_name clean all install WOPTS="-pedantic -Wall"
+	    else
+		lxc-attach -n $mother_name -- make -C /usr/src/$project_name clean all install
 	    fi
 	done
     fi
