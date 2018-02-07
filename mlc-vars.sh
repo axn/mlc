@@ -418,6 +418,7 @@ babeld-1.8.0::http://www.pps.jussieu.fr/~jch/software/files/babeld-1.8.0.tar.gz 
 mlc_gits=" \
 uci.git::https://github.com/axn/uci-0.7.5.git \
 bmx7.git::https://github.com/bmx-routing/bmx7.git \
+bmx6.git::https://github.com/bmx-routing/bmx6.git \
 oonf.git::https://github.com/OLSR/OONF.git \
 "
 
