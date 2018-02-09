@@ -401,6 +401,7 @@ bison flex m4 autoconf autoconf-archive cmake autogen dh-autoreconf gawk \
 libjson-c-dev zlib1g-dev libiw-dev \
 mini-httpd \
 nmap \
+jq \
 
 "
 
