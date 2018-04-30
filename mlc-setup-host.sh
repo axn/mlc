@@ -33,7 +33,7 @@ if true; then
 fi
 
 
-if true; then
+if false; then
     if [ -f /etc/screenrc ] && ! grep -qe "screen /bin/bash" /etc/screenrc; then
 	cat <<EOF >> /etc/screenrc
 screen
@@ -41,7 +41,7 @@ screen /bin/bash -c 'screen -X caption always " %{Wk}%?%F%{WK}%? %n %t %h %{r}ml
 EOF
     fi
  
-    hostname mlc
+#    hostname mlc
     if ! [ -f ~/.ssh/id_rsa ]; then
 	ssh-keygen -f ~/.ssh/id_rsa -P ""
     fi
