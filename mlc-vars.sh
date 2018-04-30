@@ -2123,34 +2123,34 @@ MLC_create_lxc_config()
 
 ##########################################################
 # Container specific configuration
-lxc.utsname = $node_name
+lxc.uts.name = $node_name
 lxc.arch = $mlc_arch
-lxc.rootfs = $child_rootfs
-lxc.rootfs.backend = dir
+lxc.rootfs.path = dir:$child_rootfs
+#lxc.rootfs.backend = dir
 
-lxc.network.type = veth
-lxc.network.flags = up
-lxc.network.link = $mlc_net0_link
-lxc.network.name = $mlc_net0_name
-lxc.network.mtu = $mlc_net_mtu
-lxc.network.hwaddr = $mlc_net0_mac
-lxc.network.veth.pair = $mlc_net0_veth
+lxc.net.0.type = veth
+lxc.net.0.flags = up
+lxc.net.0.link = $mlc_net0_link
+lxc.net.0.name = $mlc_net0_name
+lxc.net.0.mtu = $mlc_net_mtu
+lxc.net.0.hwaddr = $mlc_net0_mac
+lxc.net.0.veth.pair = $mlc_net0_veth
 
-lxc.network.type = veth
-lxc.network.flags = up
-lxc.network.link = $mlc_net1_link
-lxc.network.name = $mlc_net1_name
-lxc.network.mtu = $mlc_net_mtu
-lxc.network.hwaddr = $mlc_net1_mac
-lxc.network.veth.pair = $mlc_net1_veth
+lxc.net.1.type = veth
+lxc.net.1.flags = up
+lxc.net.1.link = $mlc_net1_link
+lxc.net.1.name = $mlc_net1_name
+lxc.net.1.mtu = $mlc_net_mtu
+lxc.net.1.hwaddr = $mlc_net1_mac
+lxc.net.1.veth.pair = $mlc_net1_veth
 
-#lxc.network.type = veth
-#lxc.network.flags = up
-#lxc.network.link = $mlc_net2_link
-#lxc.network.name = $mlc_net2_name
-#lxc.network.mtu = $mlc_net_mtu
-#lxc.network.hwaddr = $mlc_net2_mac
-#lxc.network.veth.pair = $mlc_net2_veth
+#lxc.net.2.type = veth
+#lxc.net.2.flags = up
+#lxc.net.2.link = $mlc_net2_link
+#lxc.net.2.name = $mlc_net2_name
+#lxc.net.2.mtu = $mlc_net_mtu
+#lxc.net.2.hwaddr = $mlc_net2_mac
+#lxc.net.2.veth.pair = $mlc_net2_veth
 
 
 # Common configuration
@@ -2164,19 +2164,19 @@ lxc.network.veth.pair = $mlc_net1_veth
 # Default configuration shared by all containers
 
 # Setup the LXC devices in /dev/lxc/
-lxc.devttydir = lxc
+lxc.tty.dir = lxc
 
 # Allow for 1024 pseudo terminals
-lxc.pts = 1024
+lxc.pty.max = 1024
 
 # Setup 4 tty devices
-lxc.tty = 4
+lxc.tty.max = 4
 
 # Drop some harmful capabilities
 lxc.cap.drop = mac_admin mac_override sys_time sys_module sys_rawio
 
 # Set the pivot directory
-lxc.pivotdir = lxc_putold
+# lxc.pivotdir = lxc_putold
 
 # Ensure hostname is changed on clone
 lxc.hook.clone = /usr/share/lxc/hooks/clonehostname
@@ -2214,7 +2214,7 @@ lxc.mount.entry = /sys/fs/fuse/connections sys/fs/fuse/connections none bind,opt
 
 # Blacklist some syscalls which are not safe in privileged
 # containers
-lxc.seccomp = /usr/share/lxc/config/common.seccomp
+lxc.seccomp.profile = /usr/share/lxc/config/common.seccomp
 
 # Lastly, include all the configs from /usr/share/lxc/config/common.conf.d/
 # lxc.include = /usr/share/lxc/config/common.conf.d/
@@ -2225,7 +2225,7 @@ lxc.hook.post-stop = /usr/share/lxcfs/lxc.reboot.hook
 ##########################################################
 
 # Doesn't support consoles in /dev/lxc/
-lxc.devttydir =
+# lxc.devttydir =
 
 # When using LXC with apparmor, the container will be confined by default.
 # If you wish for it to instead run unconfined, copy the following line
