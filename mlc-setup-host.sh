@@ -29,19 +29,20 @@ if true; then
     apt-get install aptitude 
     aptitude update
     aptitude upgrade
-    aptitude install --assume-yes lxc1 lxc-templates ipcalc ebtables bridge-utils wireshark screen git-core openssh-server emacs
+    aptitude install --assume-yes lxc1 lxc-templates ipcalc ebtables bridge-utils wireshark screen git-core openssh-server emacs cpufrequtils
 fi
 
 
-if false; then
+if true; then
     if [ -f /etc/screenrc ] && ! grep -qe "screen /bin/bash" /etc/screenrc; then
 	cat <<EOF >> /etc/screenrc
+term xterm-256color
 screen
-screen /bin/bash -c 'screen -X caption always " %{Wk}%?%F%{WK}%? %n %t %h %{r}mlc@%H  %{g}%c:%s %d/%m/%y  %{w}%w %{R}%u"'
+screen /bin/bash -c 'screen -X caption always " %{Wk}%?%F%{WK}%? %n %t %h %{r}\$STY@%H  %{g}%c:%s %d/%m/%y  %{w}%w %{R}%u"'
 EOF
     fi
  
-#    hostname mlc
+#    hostname MLC
     if ! [ -f ~/.ssh/id_rsa ]; then
 	ssh-keygen -f ~/.ssh/id_rsa -P ""
     fi
@@ -54,10 +55,9 @@ EOF
     if ! [ -f /home/mlc/.ssh/id_rsa ]; then
         su -c 'ssh-keygen -f ~/.ssh/id_rsa -P ""' mlc
     fi
-fi
 
-if ! [ -f /home/mlc/.emacs ]; then
-    cat <<EOF >> /home/mlc/.emacs
+    if ! [ -f /home/mlc/.emacs ]; then
+	cat <<EOF >> /home/mlc/.emacs
 ; from http://linux-quirks.blogspot.com/2010/02/emacs-mouse-scrolling.html
 ; Mouse Wheel Scrolling
 
@@ -98,7 +98,8 @@ if ! [ -f /home/mlc/.emacs ]; then
 
 EOF
 
-    chown mlc:mlc /home/mlc/.emacs
+	chown mlc:mlc /home/mlc/.emacs
+    fi
 fi
 
 
@@ -176,7 +177,7 @@ if true; then
 	fi
     done
 
-    if true; then
+    if false; then
 	rm -rf --preserve-root $mlc_conf_dir/$mlc_name_prefix*
 
 	mkdir -p $mother_config
@@ -253,7 +254,7 @@ EOF
     mkdir -p $mother_rootfs/root/.ssh
     echo "$mlc_pub_key"            >  $mother_rootfs/root/.ssh/authorized_keys
     cat /root/.ssh/id_rsa.pub     >>  $mother_rootfs/root/.ssh/authorized_keys
-    cat /home/mlc/.ssh/id_rsa.pub >>  $mother_rootfs/root/.ssh/authorized_keys
+    cat /home/mlc/.ssh/id_rsa.pub >>  $mother_rootfs/root/.ssh/authorized_keys || true
 
 
     lxc-attach -n $mother_name -- /etc/init.d/ssh restart
@@ -283,7 +284,8 @@ EOF
 		lxc-attach -n $mother_name -- make -C /usr/src/$project_name clean_all build_all install_all EXTRA_CFLAGS="-pg -DPROFILING -DCORE_LIMIT=20000 -DTRAFFIC_DUMP -DCRYPTLIB=MBEDTLS_2_4_0"
 	    elif echo $project_name | grep -q oonf; then
 		# from: http://www.olsr.org/mediawiki/index.php/OLSR.org_Network_Framework#olsrd2
-		$mlc_ssh root@mlc "cd /usr/src/oonf.git/build && cmake .. && make install"
+#		$mlc_ssh root@mlc "cd /usr/src/oonf.git/build && git checkout v0.14.1 && cmake .. && make clean && make install"
+		$mlc_ssh root@mlc "cd /usr/src/oonf.git/build                         && cmake .. && make clean && make install"
 	    elif echo $project_name | grep -q uci; then
 		lxc-attach -n $mother_name -- make -C /usr/src/$project_name clean all install WOPTS="-pedantic -Wall"
 	    else
