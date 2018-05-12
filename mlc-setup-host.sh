@@ -284,8 +284,8 @@ EOF
 		lxc-attach -n $mother_name -- make -C /usr/src/$project_name clean_all build_all install_all EXTRA_CFLAGS="-pg -DPROFILING -DCORE_LIMIT=20000 -DTRAFFIC_DUMP -DCRYPTLIB=MBEDTLS_2_4_0"
 	    elif echo $project_name | grep -q oonf; then
 		# from: http://www.olsr.org/mediawiki/index.php/OLSR.org_Network_Framework#olsrd2
-#		$mlc_ssh root@mlc "cd /usr/src/oonf.git/build && git checkout v0.14.1 && cmake .. && make clean && make install"
-		$mlc_ssh root@mlc "cd /usr/src/oonf.git/build                         && cmake .. && make clean && make install"
+		$mlc_ssh root@mlc "cd /usr/src/oonf.git/build && git checkout v0.14.1 && cmake .. && make clean && make install"
+#		$mlc_ssh root@mlc "cd /usr/src/oonf.git/build                         && cmake .. && make clean && make install"
 	    elif echo $project_name | grep -q uci; then
 		lxc-attach -n $mother_name -- make -C /usr/src/$project_name clean all install WOPTS="-pedantic -Wall"
 	    else

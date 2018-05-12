@@ -93,6 +93,7 @@ traceroute to fd70:1191:c909:1e4e:4c9c:4d4a:33eb:b09b (fd70:1191:c909:1e4e:4c9c:
 
 <pre>
 mlc_loop -a 1029 -e "olsrd2_static --set=global.fork=1 --set=interface.multicast_v4=- eth1.12"
+mlc_loop -a 1029 -e "olsrd2_static --set=global.fork=1 --load /etc/olsrd2.conf"
 mlc_loop -a 1029 -e "babeld -D -w -c /etc/babeld.conf eth1.13"
 </pre>
 

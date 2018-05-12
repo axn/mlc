@@ -120,15 +120,18 @@ mlc_ip4_ula3_prefix1="050"
 mlc_ip4_ula3_netmask="255.224.0.0"
 mlc_ip4_ula3_broadcast="10.63.255.255"
 
+mlc_ip4_ulaLo_prefix1="050"
 
 
 mlc_ip6_prefix="1"
 mlc_ip6_ripe1_prefix="2011:0:0"
 mlc_ip6_ripe2_prefix="2012:0:0"
 mlc_ip6_ripe3_prefix="2013:0:0"
+mlc_ip6_ripeLo_prefix="2014:0:0"
 mlc_ip6_ula1_prefix="fd01:0:0"
 mlc_ip6_ula2_prefix="fd02:0:0"
 mlc_ip6_ula3_prefix="fd03:0:0"
+mlc_ip6_ulaLo_prefix="fc00:0:0"
 
 
 MLC_ip6_ula() {
@@ -228,6 +231,14 @@ MLC_assign_networks() {
     mlc_net13_ula_mask="48"
     mlc_net13_rip_addr="$mlc_ip6_ripe3_prefix:$mlc_node::13"
     mlc_net13_rip_mask="128"
+
+    mlc_netLo_name="lo"
+    mlc_netLo_ip4_addr="$(MLC_calc_ip4 $mlc_ip4_ulaLo_prefix1 $mlc_node $idx )" 
+    mlc_netLo_ip4_mask="32"
+    mlc_netLo_ula_addr="$(MLC_ip6_ula $mlc_ip6_ulaLo_prefix $mlc_net1_mac 1)"
+    mlc_netLo_ula_mask="128"
+    mlc_netLo_rip_addr="$mlc_ip6_ripeLo_prefix:$mlc_node::13"
+    mlc_netLo_rip_mask="128"
 
 
     idx="2"
@@ -1640,6 +1651,9 @@ EOF
 
 auto lo
 iface lo inet loopback
+  up /sbin/ip -4 addr add $mlc_netLo_ip4_addr/$mlc_netLo_ip4_mask dev $mlc_netLo_name
+  up /sbin/ip -6 addr add $mlc_netLo_ula_addr/$mlc_netLo_ula_mask dev $mlc_netLo_name
+
 
 auto  $mlc_net0_name
 iface $mlc_net0_name inet static
@@ -1676,14 +1690,14 @@ iface $mlc_net12_name inet static
   up /sbin/ip -6 addr add $mlc_net12_ula_addr/$mlc_net12_ula_mask dev $mlc_net12_name
 #  up /sbin/ip -6 addr add $mlc_net12_rip_addr/$mlc_net12_rip_mask dev $mlc_net12_name
 
-#
-auto  $mlc_net13_name
-iface $mlc_net13_name inet static
-  address $mlc_net13_ip4_addr
-  netmask $mlc_net13_ip4_mask
-  broadcast $mlc_net13_ip4_brc
-  vlan_raw_device $mlc_net1_name
-  up /sbin/ip -6 addr add $mlc_net13_ula_addr/$mlc_net13_ula_mask dev $mlc_net13_name
+##
+#auto  $mlc_net13_name
+#iface $mlc_net13_name inet static
+#  address $mlc_net13_ip4_addr
+#  netmask $mlc_net13_ip4_mask
+#  broadcast $mlc_net13_ip4_brc
+#  vlan_raw_device $mlc_net1_name
+#  up /sbin/ip -6 addr add $mlc_net13_ula_addr/$mlc_net13_ula_mask dev $mlc_net13_name
 ##  up /sbin/ip -6 addr add $mlc_net13_rip_addr/$mlc_net13_rip_mask dev $mlc_net13_name
 
 
@@ -1912,6 +1926,8 @@ config 'plugin'
 config 'plugin'
         option 'plugin' 'bmx6_topology.so'
 
+
+
 #config 'ipVersion'
 #       option 'ipVersion' '6'
 #       option 'throwRules' '0'
@@ -1965,8 +1981,8 @@ cat <<EOF > $vm_rootfs/etc/config/bmx7
 config 'plugin'
         option 'plugin' 'bmx7_config.so'
 
-#config 'plugin'
-#        option 'plugin' 'bmx7_json.so'
+config 'plugin'
+        option 'plugin' 'bmx7_json.so'
 
 config 'plugin'
        option 'plugin' 'bmx7_sms.so'
@@ -2092,6 +2108,25 @@ Interface "$mlc_net21_name"
 
 EOF
 
+#configure olsrd2
+cat <<EOF > $vm_rootfs/etc/olsrd2.conf
+[http]
+	bindto 0.0.0.0
+
+#[lan_import=1]
+#	interface br-testnet
+
+[domain=0]
+	mpr -
+
+[nhdp]
+	mpr -
+
+[interface=lo]
+
+[interface=$mlc_net1_name]
+
+EOF
 
 
     return 0
