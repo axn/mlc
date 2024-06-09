@@ -105,7 +105,7 @@ mlc_admin_idx="0"
 mlc_ip4_admin_prefix1="000"
 mlc_ip4_admin_netmask="255.224.0.0"
 mlc_ip4_admin_netmask="255.255.0.0"
-mlc_ip4_admin_broadcast="10.031.255.255"
+mlc_ip4_admin_broadcast="10.0.255.255"
 mlc_ip4_admin_gateway="10.0.0.1"
 
 mlc_ip4_ula1_prefix1="100"
@@ -930,10 +930,13 @@ mlc_veth_force_cleanup() {
 mlc_net_flush() {
   ebtables -P FORWARD DROP
   ebtables --flush FORWARD
+  ebtables -I FORWARD --logical-out mbr0 -j ACCEPT
+  ebtables -I FORWARD --logical-in  mbr0 -j ACCEPT
 #  ebtables -I FORWARD --logical-out mlc0 -j DROP
 #  ebtables -I FORWARD --logical-out mlc1 -j DROP
 #  ebtables -I FORWARD --logical-out mlc2 -j DROP
-
+#  ebtables -I FORWARD --logical-out mbr1 -j DROP
+#  ebtables -I FORWARD --logical-out mbr2 -j DROP
 }
 
 
