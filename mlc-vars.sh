@@ -42,6 +42,7 @@ mlc_owrt_fs_tgz="/usr/src/openwrt/13f/qmpfw-gsoc.git/build/alix/bin/x86/openwrt-
 
 mlc_arch="x86_64"
 mlc_debian_suite="bookworm" # squeeze, lenny, wheezy, sid.  Or check whats available on: http://cdn.debian.net/debian/
+mlc_debian_release="release-12" # for bookworm
 
 mlc_empty_dirs=
 mlc_copy_dirs=
@@ -57,6 +58,12 @@ mlc_mount_dirs="sbin bin usr boot lib var/cache var/lib "
 
 
 mlc_name_prefix="mlc"
+mlc_mother_id="0002"
+mother_name="${mlc_name_prefix}${mlc_mother_id}"
+mother_config="$mlc_conf_dir/$mother_name"
+mother_rootfs="$mlc_conf_dir/$mother_name/rootfs"
+
+
 mlc_bridge_prefix="mbr"
 mlc_p2p_bridge_prefix="M"
 mlc_p2p_bridge_delimiter="="
@@ -66,8 +73,6 @@ mlc_veth_prefix="veth"
 mlc_dev_prefix="eth"
 
 mlc_mnt="NULL"
-
-mlc_mother_id="0002"
 
 mlc_min_node="1000"
 mlc_max_node="8999"
@@ -223,7 +228,7 @@ ca-certificates \
 ifupdown \
 netbase \
 net-tools \
-iproute vlan bridge-utils \
+iproute2 vlan bridge-utils \
 iptables \
 openssh-server \
 iputils-ping \
@@ -236,19 +241,20 @@ ipcalc ipv6calc \
 wget \
 bzip2 \
 unzip \
-build-essential gdb file subversion git-core \
+build-essential gdb file subversion \
 lynx \
 telnet \
 tcpdump \
 mtr traceroute \
 psmisc lsof \
-iptraf  netcat iperf  \
+iptraf-ng  netcat-openbsd iperf  \
 bison flex m4 autoconf autoconf-archive cmake autogen dh-autoreconf gawk \
 libjson-c-dev zlib1g-dev libiw-dev \
 mini-httpd \
 nmap \
 jq \
-
+git \
+libmbedtls-dev \
 "
 
 mlc_deb_packages_disabled="\
@@ -257,7 +263,9 @@ texinfo \
 "
 
 mlc_sources="\
-mbedtls-2.4.0::https://tls.mbed.org/download/mbedtls-2.4.0-gpl.tgz \
+"
+disabled_mlc_sources="\
+mbedtls-3.6.0::https://tls.mbed.org/download/mbedtls-3.6.0-gpl.tgz \
 olsrd-0.9.6::http://www.olsr.org/releases/0.9/olsrd-0.9.6.tar.gz \
 babeld-1.8.0::http://www.pps.jussieu.fr/~jch/software/files/babeld-1.8.0.tar.gz \
 "
@@ -265,10 +273,12 @@ babeld-1.8.0::http://www.pps.jussieu.fr/~jch/software/files/babeld-1.8.0.tar.gz 
 mlc_gits=" \
 uci.git::https://github.com/axn/uci-0.7.5.git \
 bmx7.git::https://github.com/bmx-routing/bmx7.git \
+"
+disabled_mlc_gits=" \
+mbedtls::https://github.com/Mbed-TLS/mbedtls.git \  // added as debian package
 bmx6.git::https://github.com/bmx-routing/bmx6.git \
 oonf.git::https://github.com/OLSR/OONF.git \
 "
-
 
 
 mlc_help() {
@@ -500,13 +510,13 @@ MLC_setup_bridge() {
      echo no address given
   else
      ip addr add $addr/$mask br $brc dev $link 
-#      ifconfig $link $addr  netmask $mask  broadcast $brc
       ip link set $link address 0:$(printf "%X" $(echo $addr | awk -F. '{print $4}')):$(printf "%X" $(echo $addr | awk -F. '{print $3}')):0:0:0
   fi
 
       brctl setfd $link 0
-      ifconfig $link up
-      ifconfig $link promisc
+      ip link set $link up
+      ip link set $link promisc on
+
 
  echo 1 > /sys/devices/virtual/net/$link/bridge/multicast_snooping
 }
@@ -1473,6 +1483,11 @@ MLC_configure_individual() {
     fi
 
   mkdir -p $vm_rootfs/etc/config
+
+# enable root ssh login:
+cat <<EOF > $vm_rootfs/etc/ssh/sshd_config
+PermitRootLogin yes
+EOF
 
     # set the hostname
     cat <<EOF > $vm_rootfs/etc/hostname

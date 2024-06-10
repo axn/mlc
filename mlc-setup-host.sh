@@ -24,7 +24,7 @@
 set -x
 set -e
 
-if true; then
+if false; then
     apt-get update
     apt-get install aptitude 
     aptitude update
@@ -33,7 +33,7 @@ if true; then
 fi
 
 
-if true; then
+if false; then
     if [ -f /etc/screenrc ] && ! grep -qe "screen /bin/bash" /etc/screenrc; then
 	cat <<EOF >> /etc/screenrc
 term xterm-256color
@@ -143,12 +143,8 @@ EOF
 fi
 
 
-mother_name="${mlc_name_prefix}${mlc_mother_id}"
 
-mother_config="$mlc_conf_dir/$mother_name"
-mother_rootfs="$mlc_conf_dir/$mother_name/rootfs"
-
-if true; then
+if false; then
 
     MLC_assign_networks $mlc_mother_id
 
@@ -167,10 +163,16 @@ if true; then
 	fi
     done
 
-    if true; then
+    if false; then
 	rm -rf --preserve-root $mlc_conf_dir/$mlc_name_prefix*
 
 	mkdir -p $mother_config
+
+	echo "Check if later than ${mlc_debian_release} is needed"
+	wget "https://ftp-master.debian.org/keys/${mlc_debian_release}.asc"
+	gpg --no-default-keyring --keyring /var/cache/lxc/debian/archive-key.gpg --import ${mlc_debian_release}
+	gpg --no-default-keyring --keyring /var/cache/lxc/debian/archive-key.gpg --list-key
+
 	lxc-create -n $mother_name -t debian -P $mlc_conf_dir -- --arch=$mlc_arch --release=$mlc_debian_suite --enable-non-free --packages=$(echo $mlc_deb_packages | sed 's/ /,/g')
     fi
 
@@ -229,9 +231,6 @@ ChallengeResponseAuthentication no
 UseDNS no
 EOF
 
-
-
-    
     # set the root passwd:
     if [ -z $mlc_passwd ] ; then
 	chroot $mother_rootfs /usr/bin/passwd -d root
@@ -250,28 +249,38 @@ EOF
     lxc-attach -n $mother_name -- /etc/init.d/ssh restart
 
     lxc-attach -n $mother_name -- mkdir -p /lib64
+fi
 
-    if true; then
+if false ; then
+	    lxc-attach -n $mother_name -- aptitude install $mlc_deb_packages
+fi
+
+if false; then
 	for project in $mlc_sources; do
 	    project_name="$(echo $project | awk -F'::' '{print $1}')"
 	    project_repo="$(echo $project | awk -F'::' '{print $2}')"
+
+	    echo "Installing $project_name from $project_repo via make to $mother_name"
+
 	    lxc-attach -n $mother_name -- wget -c --tries=10 --directory-prefix=/usr/src $project_repo
 	    lxc-attach -n $mother_name -- tar -C /usr/src -xzvf /usr/src/$project_name.tar.gz ||\
 		lxc-attach -n $mother_name -- tar -C /usr/src -xzvf /usr/src/$project_name-gpl.tgz
 	    lxc-attach -n $mother_name -- make clean all install -C /usr/src/$project_name 
 	done
-    fi
+fi
 
-    if true; then
+if false; then
 	for project in $mlc_gits; do
 	    project_name="$(echo $project | awk -F'::' '{print $1}')"
 	    project_repo="$(echo $project | awk -F'::' '{print $2}')"
 	    project_make="$(echo $project | awk -F'::' '{print $3}')"
 	    
+	    echo "Installing $project_name from $project_repo via $project_make to $mother_name"
+
 	    lxc-attach -n $mother_name -- rm -rf usr/src/$project_name
 	    lxc-attach -n $mother_name -- git clone $project_repo usr/src/$project_name
 	    if echo $project_name | grep -q bmx; then
-		lxc-attach -n $mother_name -- make -C /usr/src/$project_name clean_all build_all install_all EXTRA_CFLAGS="-pg -DPROFILING -DCORE_LIMIT=20000 -DTRAFFIC_DUMP -DCRYPTLIB=MBEDTLS_2_4_0"
+		lxc-attach -n $mother_name -- make -C /usr/src/$project_name/src clean_all build_all install_all EXTRA_CFLAGS="-pg -DPROFILING -DCORE_LIMIT=20000 -DTRAFFIC_DUMP"
 	    elif echo $project_name | grep -q oonf; then
 		# from: http://www.olsr.org/mediawiki/index.php/OLSR.org_Network_Framework#olsrd2
 		$mlc_ssh root@mlc "cd /usr/src/oonf.git/build && git checkout v0.14.1 && cmake .. && make clean && make install"
@@ -282,15 +291,14 @@ EOF
 		lxc-attach -n $mother_name -- make -C /usr/src/$project_name clean all install
 	    fi
 	done
-    fi
 
 fi
 
-
-true
-false
-false
-
+set +x
+echo
+echo
+echo "ATTENTION: Enable all needed if false/true bocks of this script manually !!!"
+echo
 
 
 

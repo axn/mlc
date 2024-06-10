@@ -44,6 +44,7 @@ modprobe ip6_tunnel
 
 MLC_setup_bridge $mlc_net0_link $mlc_ip4_admin_gateway $mlc_net0_ip4_mask $mlc_net0_ip4_brc
 brctl addif $mlc_net0_link enp0s8
+ip add del $mlc_ip4_admin_gateway/16 dev enp0s8
 
 MLC_setup_bridge $mlc_net1_link 
 MLC_setup_bridge $mlc_net2_link 
