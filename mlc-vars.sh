@@ -102,25 +102,16 @@ mlc_node="22"
 mlc_ip4_prefix0="10"
 mlc_admin_idx="0"
 
-mlc_ip4_admin_prefix1="000"
-mlc_ip4_admin_netmask="255.224.0.0"
+mlc_ip4_admin_prefix1="111"
+mlc_ip4_admin_netmask="255.225.0.0"
 mlc_ip4_admin_netmask="255.255.0.0"
-mlc_ip4_admin_broadcast="10.0.255.255"
-mlc_ip4_admin_gateway="10.0.0.1"
+mlc_ip4_admin_broadcast="10.111.255.255"
+mlc_ip4_admin_gateway="10.111.0.1"
 
-mlc_ip4_ula1_prefix1="100"
-mlc_ip4_ula1_netmask="255.224.0.0"
-mlc_ip4_ula1_broadcast="10.127.255.255"
+mlc_ip4_ula1_prefix1="050"
+mlc_ip4_ula1_netmask="255.255.0.0"
+mlc_ip4_ula1_broadcast="10.50.255.255"
 
-mlc_ip4_ula2_prefix1="200"
-mlc_ip4_ula2_netmask="255.224.0.0"
-mlc_ip4_ula2_broadcast="10.223.255.255"
-
-mlc_ip4_ula3_prefix1="050"
-mlc_ip4_ula3_netmask="255.224.0.0"
-mlc_ip4_ula3_broadcast="10.63.255.255"
-
-mlc_ip4_ulaLo_prefix1="050"
 
 
 mlc_ip6_prefix="1"
@@ -214,32 +205,6 @@ MLC_assign_networks() {
     mlc_net11_rip_addr="$mlc_ip6_ripe1_prefix:$mlc_node::11"
     mlc_net11_rip_mask="128"
 
-    mlc_net12_name="eth${idx}.12"
-    mlc_net12_ip4_addr="$(MLC_calc_ip4 $mlc_ip4_ula2_prefix1 $mlc_node $idx )" 
-    mlc_net12_ip4_mask="$mlc_ip4_ula2_netmask"
-    mlc_net12_ip4_brc="$mlc_ip4_ula2_broadcast"
-    mlc_net12_ula_addr="$(MLC_ip6_ula $mlc_ip6_ula2_prefix $mlc_net1_mac 1)"
-    mlc_net12_ula_mask="48"
-    mlc_net12_rip_addr="$mlc_ip6_ripe2_prefix:$mlc_node::12"
-    mlc_net12_rip_mask="128"
-
-    mlc_net13_name="eth${idx}.13"
-    mlc_net13_ip4_addr="$(MLC_calc_ip4 $mlc_ip4_ula3_prefix1 $mlc_node $idx )" 
-    mlc_net13_ip4_mask="$mlc_ip4_ula3_netmask"
-    mlc_net13_ip4_brc="$mlc_ip4_ula3_broadcast"
-    mlc_net13_ula_addr="$(MLC_ip6_ula $mlc_ip6_ula3_prefix $mlc_net1_mac 1)"
-    mlc_net13_ula_mask="48"
-    mlc_net13_rip_addr="$mlc_ip6_ripe3_prefix:$mlc_node::13"
-    mlc_net13_rip_mask="128"
-
-    mlc_netLo_name="lo"
-    mlc_netLo_ip4_addr="$(MLC_calc_ip4 $mlc_ip4_ulaLo_prefix1 $mlc_node $idx )" 
-    mlc_netLo_ip4_mask="32"
-    mlc_netLo_ula_addr="$(MLC_ip6_ula $mlc_ip6_ulaLo_prefix $mlc_net1_mac 1)"
-    mlc_netLo_ula_mask="128"
-    mlc_netLo_rip_addr="$mlc_ip6_ripeLo_prefix:$mlc_node::13"
-    mlc_netLo_rip_mask="128"
-
 
     idx="2"
     mlc_net2_link="${mlc_bridge_prefix}${idx}"
@@ -247,136 +212,6 @@ MLC_assign_networks() {
     mlc_net2_mac="$(MLC_calc_mac $mlc_node $idx )"
     mlc_net2_veth="$(MLC_calc_veth_name $mlc_node $idx )"
 
-    mlc_net21_name="${mlc_dev_prefix}${idx}.11"
-    mlc_net21_ip4_addr="$(MLC_calc_ip4 $mlc_ip4_ula1_prefix1 $mlc_node $idx )" 
-    mlc_net21_ip4_mask="$mlc_ip4_ula1_netmask"
-    mlc_net21_ip4_brc="$mlc_ip4_ula1_broadcast"
-    mlc_net21_ula_addr="$(MLC_ip6_ula $mlc_ip6_ula1_prefix $mlc_net2_mac 1)"
-    mlc_net21_ula_mask="48"
-    mlc_net21_rip_addr="$mlc_ip6_ripe1_prefix:$mlc_node::21"
-    mlc_net21_rip_mask="128"
-
-    mlc_net22_name="${mlc_dev_prefix}${idx}.12"
-    mlc_net22_ip4_addr="$(MLC_calc_ip4 $mlc_ip4_ula2_prefix1 $mlc_node $idx )" 
-    mlc_net22_ip4_mask="$mlc_ip4_ula2_netmask"
-    mlc_net22_ip4_brc="$mlc_ip4_ula2_broadcast"
-    mlc_net22_ula_addr="$(MLC_ip6_ula $mlc_ip6_ula2_prefix $mlc_net2_mac 1)"
-    mlc_net22_ula_mask="48"
-    mlc_net22_rip_addr="$mlc_ip6_ripe2_prefix:$mlc_node::22"
-    mlc_net22_rip_mask="128"
-
-    mlc_net23_name="${mlc_dev_prefix}${idx}.13"
-    mlc_net23_ip4_addr="$(MLC_calc_ip4 $mlc_ip4_ula3_prefix1 $mlc_node $idx )" 
-    mlc_net23_ip4_mask="$mlc_ip4_ula3_netmask"
-    mlc_net23_ip4_brc="$mlc_ip4_ula3_broadcast"
-    mlc_net23_ula_addr="$(MLC_ip6_ula $mlc_ip6_ula3_prefix $mlc_net2_mac 1)"
-    mlc_net23_ula_mask="48"
-    mlc_net23_rip_addr="$mlc_ip6_ripe3_prefix:$mlc_node::23"
-    mlc_net23_rip_mask="128"
-
-
-# NS3 Links:
-    idx="3"
-    mlc_net3_name="${mlc_dev_prefix}${idx}"
-    mlc_net3_mac="$(MLC_calc_mac $mlc_node $idx )"
-    mlc_net3_veth="$(MLC_calc_veth_name $mlc_node $idx )"
-
-    mlc_net3_ip4_addr="$(MLC_calc_ip4 $mlc_ip4_ula1_prefix1 $mlc_node $idx )" 
-    mlc_net3_ip4_mask="$mlc_ip4_ula1_netmask"
-    mlc_net3_ip4_brc="$mlc_ip4_ula1_broadcast"
-    mlc_net3_ula_addr="$(MLC_ip6_ula $mlc_ip6_ula1_prefix $mlc_net3_mac 1)"
-    mlc_net3_ula_mask="96"
-
-#    mlc_net31_name="eth${idx}.11"
-#    mlc_net31_ip4_addr="$(MLC_calc_ip4 $mlc_ip4_ula1_prefix1 $mlc_node $idx )" 
-#    mlc_net31_ip4_mask="$mlc_ip4_ula1_netmask"
-#    mlc_net31_ip4_brc="$mlc_ip4_ula1_broadcast"
-#    mlc_net31_ula_addr="$(MLC_ip6_ula $mlc_ip6_ula1_prefix $mlc_net3_mac 1)"
-#    mlc_net31_ula_mask="96"
-#
-#    mlc_net32_name="eth${idx}.12"
-#    mlc_net32_ip4_addr="$(MLC_calc_ip4 $mlc_ip4_ula2_prefix1 $mlc_node $idx )" 
-#    mlc_net32_ip4_mask="$mlc_ip4_ula2_netmask"
-#    mlc_net32_ip4_brc="$mlc_ip4_ula2_broadcast"
-#    mlc_net32_ula_addr="$(MLC_ip6_ula $mlc_ip6_ula2_prefix $mlc_net3_mac 1)"
-#    mlc_net32_ula_mask="96"
-
-# Peer2Peer Links:
-    idx="4"
-    mlc_net4_name="${mlc_dev_prefix}${idx}"
-    mlc_net4_mac="$(MLC_calc_mac $mlc_node $idx )"
-    mlc_net4_veth="$(MLC_calc_veth_name $mlc_node $idx )"
-
-    mlc_net41_name="eth${idx}.11"
-    mlc_net41_ip4_addr="$(MLC_calc_ip4 $mlc_ip4_ula1_prefix1 $mlc_node $idx )" 
-    mlc_net41_ip4_mask="$mlc_ip4_ula1_netmask"
-    mlc_net41_ip4_brc="$mlc_ip4_ula1_broadcast"
-    mlc_net41_ula_addr="$(MLC_ip6_ula $mlc_ip6_ula1_prefix $mlc_net4_mac 1)"
-    mlc_net41_ula_mask="96"
-
-    mlc_net42_name="eth${idx}.12"
-    mlc_net42_ip4_addr="$(MLC_calc_ip4 $mlc_ip4_ula2_prefix1 $mlc_node $idx )" 
-    mlc_net42_ip4_mask="$mlc_ip4_ula2_netmask"
-    mlc_net42_ip4_brc="$mlc_ip4_ula2_broadcast"
-    mlc_net42_ula_addr="$(MLC_ip6_ula $mlc_ip6_ula2_prefix $mlc_net4_mac 1)"
-    mlc_net42_ula_mask="96"
-
-    idx="5"
-    mlc_net5_name="${mlc_dev_prefix}${idx}"
-    mlc_net5_mac="$(MLC_calc_mac $mlc_node $idx )"
-    mlc_net5_veth="$(MLC_calc_veth_name $mlc_node $idx )"
-
-    mlc_net51_name="eth${idx}.11"
-    mlc_net51_ip4_addr="$(MLC_calc_ip4 $mlc_ip4_ula1_prefix1 $mlc_node $idx )" 
-    mlc_net51_ip4_mask="$mlc_ip4_ula1_netmask"
-    mlc_net51_ip4_brc="$mlc_ip4_ula1_broadcast"
-    mlc_net51_ula_addr="$(MLC_ip6_ula $mlc_ip6_ula1_prefix $mlc_net5_mac 1)"
-    mlc_net51_ula_mask="96"
-
-    mlc_net52_name="eth${idx}.12"
-    mlc_net52_ip4_addr="$(MLC_calc_ip4 $mlc_ip4_ula2_prefix1 $mlc_node $idx )" 
-    mlc_net52_ip4_mask="$mlc_ip4_ula2_netmask"
-    mlc_net52_ip4_brc="$mlc_ip4_ula2_broadcast"
-    mlc_net52_ula_addr="$(MLC_ip6_ula $mlc_ip6_ula2_prefix $mlc_net5_mac 1)"
-    mlc_net52_ula_mask="96"
-
-    idx="6"
-    mlc_net6_name="${mlc_dev_prefix}${idx}"
-    mlc_net6_mac="$(MLC_calc_mac $mlc_node $idx )"
-    mlc_net6_veth="$(MLC_calc_veth_name $mlc_node $idx )"
-
-    mlc_net61_name="eth${idx}.11"
-    mlc_net61_ip4_addr="$(MLC_calc_ip4 $mlc_ip4_ula1_prefix1 $mlc_node $idx )" 
-    mlc_net61_ip4_mask="$mlc_ip4_ula1_netmask"
-    mlc_net61_ip4_brc="$mlc_ip4_ula1_broadcast"
-    mlc_net61_ula_addr="$(MLC_ip6_ula $mlc_ip6_ula1_prefix $mlc_net6_mac 1)"
-    mlc_net61_ula_mask="96"
-
-    mlc_net62_name="eth${idx}.12"
-    mlc_net62_ip4_addr="$(MLC_calc_ip4 $mlc_ip4_ula2_prefix1 $mlc_node $idx )" 
-    mlc_net62_ip4_mask="$mlc_ip4_ula2_netmask"
-    mlc_net62_ip4_brc="$mlc_ip4_ula2_broadcast"
-    mlc_net62_ula_addr="$(MLC_ip6_ula $mlc_ip6_ula2_prefix $mlc_net6_mac 1)"
-    mlc_net62_ula_mask="96"
-
-    idx="7"
-    mlc_net7_name="${mlc_dev_prefix}${idx}"
-    mlc_net7_mac="$(MLC_calc_mac $mlc_node $idx )"
-    mlc_net7_veth="$(MLC_calc_veth_name $mlc_node $idx )"
-
-    mlc_net71_name="eth${idx}.11"
-    mlc_net71_ip4_addr="$(MLC_calc_ip4 $mlc_ip4_ula1_prefix1 $mlc_node $idx )" 
-    mlc_net71_ip4_mask="$mlc_ip4_ula1_netmask"
-    mlc_net71_ip4_brc="$mlc_ip4_ula1_broadcast"
-    mlc_net71_ula_addr="$(MLC_ip6_ula $mlc_ip6_ula1_prefix $mlc_net7_mac 1)"
-    mlc_net71_ula_mask="96"
-
-    mlc_net72_name="eth${idx}.12"
-    mlc_net72_ip4_addr="$(MLC_calc_ip4 $mlc_ip4_ula2_prefix1 $mlc_node $idx )" 
-    mlc_net72_ip4_mask="$mlc_ip4_ula2_netmask"
-    mlc_net72_ip4_brc="$mlc_ip4_ula2_broadcast"
-    mlc_net72_ula_addr="$(MLC_ip6_ula $mlc_ip6_ula2_prefix $mlc_net7_mac 1)"
-    mlc_net72_ula_mask="96"
 }
 
 
@@ -1684,186 +1519,13 @@ iface $mlc_net11_name inet static
   up /sbin/ip -6 addr add $mlc_net11_ula_addr/$mlc_net11_ula_mask dev $mlc_net11_name
 #  up /sbin/ip -6 addr add $mlc_net11_rip_addr/$mlc_net11_rip_mask dev $mlc_net11_name
 
-auto  $mlc_net12_name
-iface $mlc_net12_name inet static
-  address $mlc_net12_ip4_addr
-  netmask $mlc_net12_ip4_mask
-  broadcast $mlc_net12_ip4_brc
-  vlan_raw_device $mlc_net1_name
-  up /sbin/ip -6 addr add $mlc_net12_ula_addr/$mlc_net12_ula_mask dev $mlc_net12_name
-#  up /sbin/ip -6 addr add $mlc_net12_rip_addr/$mlc_net12_rip_mask dev $mlc_net12_name
-
-##
-#auto  $mlc_net13_name
-#iface $mlc_net13_name inet static
-#  address $mlc_net13_ip4_addr
-#  netmask $mlc_net13_ip4_mask
-#  broadcast $mlc_net13_ip4_brc
-#  vlan_raw_device $mlc_net1_name
-#  up /sbin/ip -6 addr add $mlc_net13_ula_addr/$mlc_net13_ula_mask dev $mlc_net13_name
-##  up /sbin/ip -6 addr add $mlc_net13_rip_addr/$mlc_net13_rip_mask dev $mlc_net13_name
-
 
 auto  $mlc_net2_name
 iface $mlc_net2_name inet static
   mtu $mlc_net_mtu
 
-#auto  $mlc_net21_name
-#iface $mlc_net21_name inet static
-#  address $mlc_net21_ip4_addr
-#  netmask $mlc_net21_ip4_mask
-#  broadcast $mlc_net21_ip4_brc
-#  vlan_raw_device $mlc_net2_name
-#  up /sbin/ip -6 addr add $mlc_net21_ula_addr/$mlc_net21_ula_mask dev $mlc_net21_name
-##  up /sbin/ip -6 addr add $mlc_net21_rip_addr/$mlc_net21_rip_mask dev $mlc_net21_name
-#
-#auto  $mlc_net22_name
-#iface $mlc_net22_name inet static
-#  address $mlc_net22_ip4_addr
-#  netmask $mlc_net22_ip4_mask
-#  broadcast $mlc_net22_ip4_brc
-#  vlan_raw_device $mlc_net2_name
-#  up /sbin/ip -6 addr add $mlc_net22_ula_addr/$mlc_net22_ula_mask dev $mlc_net22_name
-##  up /sbin/ip -6 addr add $mlc_net22_rip_addr/$mlc_net22_rip_mask dev $mlc_net22_name
-#
-#auto  $mlc_net23_name
-#iface $mlc_net23_name inet static
-#  address $mlc_net23_ip4_addr
-#  netmask $mlc_net23_ip4_mask
-#  broadcast $mlc_net23_ip4_brc
-#  vlan_raw_device $mlc_net2_name
-#  up /sbin/ip -6 addr add $mlc_net23_ula_addr/$mlc_net23_ula_mask dev $mlc_net23_name
-##  up /sbin/ip -6 addr add $mlc_net23_rip_addr/$mlc_net23_rip_mask dev $mlc_net23_name
-
-
-
 EOF
 
-
-    # configure the network using static IPs (DISABLED)
-    cat <<EOF > /dev/zero
-
-#########################################################
-#########################################################
-# NS3 experimental interfaces:
-
-auto  $mlc_net3_name
-iface $mlc_net3_name inet static
-  mtu $mlc_net_mtu
-
-  address $mlc_net3_ip4_addr
-  netmask $mlc_net3_ip4_mask
-  broadcast $mlc_net3_ip4_brc
-  up /sbin/ip -6 addr add $mlc_net3_ula_addr/$mlc_net3_ula_mask dev $mlc_net3_name
-
-#auto  $mlc_net31_name
-#iface $mlc_net31_name inet static
-#  address $mlc_net31_ip4_addr
-#  netmask $mlc_net31_ip4_mask
-#  broadcast $mlc_net31_ip4_brc
-#  vlan_raw_device $mlc_net3_name
-#  up /sbin/ip -6 addr add $mlc_net31_ula_addr/$mlc_net31_ula_mask dev $mlc_net31_name
-#
-#auto  $mlc_net32_name
-#iface $mlc_net32_name inet static
-#  address $mlc_net32_ip4_addr
-#  netmask $mlc_net32_ip4_mask
-#  broadcast $mlc_net32_ip4_brc
-#  vlan_raw_device $mlc_net3_name
-#  up /sbin/ip -6 addr add $mlc_net32_ula_addr/$mlc_net32_ula_mask dev $mlc_net32_name
-
-
-#########################################################
-#########################################################
-# peering interfaces:
-
-
-auto  $mlc_net4_name
-iface $mlc_net4_name inet static
-  mtu $mlc_net_mtu
-
-auto  $mlc_net41_name
-iface $mlc_net41_name inet static
-  address $mlc_net41_ip4_addr
-  netmask $mlc_net41_ip4_mask
-  broadcast $mlc_net41_ip4_brc
-  vlan_raw_device $mlc_net4_name
-  up /sbin/ip -6 addr add $mlc_net41_ula_addr/$mlc_net41_ula_mask dev $mlc_net41_name
-
-auto  $mlc_net42_name
-iface $mlc_net42_name inet static
-  address $mlc_net42_ip4_addr
-  netmask $mlc_net42_ip4_mask
-  broadcast $mlc_net42_ip4_brc
-  vlan_raw_device $mlc_net4_name
-  up /sbin/ip -6 addr add $mlc_net42_ula_addr/$mlc_net42_ula_mask dev $mlc_net42_name
-
-
-auto  $mlc_net5_name
-iface $mlc_net5_name inet static
-  mtu $mlc_net_mtu
-
-auto  $mlc_net51_name
-iface $mlc_net51_name inet static
-  address $mlc_net51_ip4_addr
-  netmask $mlc_net51_ip4_mask
-  broadcast $mlc_net51_ip4_brc
-  vlan_raw_device $mlc_net5_name
-  up /sbin/ip -6 addr add $mlc_net51_ula_addr/$mlc_net51_ula_mask dev $mlc_net51_name
-
-auto  $mlc_net52_name
-iface $mlc_net52_name inet static
-  address $mlc_net52_ip4_addr
-  netmask $mlc_net52_ip4_mask
-  broadcast $mlc_net52_ip4_brc
-  vlan_raw_device $mlc_net5_name
-  up /sbin/ip -6 addr add $mlc_net52_ula_addr/$mlc_net52_ula_mask dev $mlc_net52_name
-
-
-auto  $mlc_net6_name
-iface $mlc_net6_name inet static
-  mtu $mlc_net_mtu
-
-auto  $mlc_net61_name
-iface $mlc_net61_name inet static
-  address $mlc_net61_ip4_addr
-  netmask $mlc_net61_ip4_mask
-  broadcast $mlc_net61_ip4_brc
-  vlan_raw_device $mlc_net6_name
-  up /sbin/ip -6 addr add $mlc_net61_ula_addr/$mlc_net61_ula_mask dev $mlc_net61_name
-
-auto  $mlc_net62_name
-iface $mlc_net62_name inet static
-  address $mlc_net62_ip4_addr
-  netmask $mlc_net62_ip4_mask
-  broadcast $mlc_net62_ip4_brc
-  vlan_raw_device $mlc_net6_name
-  up /sbin/ip -6 addr add $mlc_net62_ula_addr/$mlc_net62_ula_mask dev $mlc_net62_name
-
-
-auto  $mlc_net7_name
-iface $mlc_net7_name inet static
-  mtu $mlc_net_mtu
-
-auto  $mlc_net71_name
-iface $mlc_net71_name inet static
-  address $mlc_net71_ip4_addr
-  netmask $mlc_net71_ip4_mask
-  broadcast $mlc_net71_ip4_brc
-  vlan_raw_device $mlc_net7_name
-  up /sbin/ip -6 addr add $mlc_net71_ula_addr/$mlc_net71_ula_mask dev $mlc_net71_name
-
-auto  $mlc_net72_name
-iface $mlc_net72_name inet static
-  address $mlc_net72_ip4_addr
-  netmask $mlc_net72_ip4_mask
-  broadcast $mlc_net72_ip4_brc
-  vlan_raw_device $mlc_net7_name
-  up /sbin/ip -6 addr add $mlc_net72_ula_addr/$mlc_net72_ula_mask dev $mlc_net72_name
-
-
-
-EOF
 
 
     # configure bmxd
@@ -1901,8 +1563,7 @@ cat <<EOF > $vm_rootfs/etc/babeld.conf
 ## http://battlemesh.org/BattleMeshV4/NodeConfig
 ## http://lists.alioth.debian.org/pipermail/babel-users/2008-March/000074.html
 
-redistribute local if $mlc_net13_name ip $mlc_ip6_ula3_prefix::/48 ge 48
-redistribute local if $mlc_net23_name ip $mlc_ip6_ula3_prefix::/48 ge 48
+redistribute local if $mlc_net1_name ip $mlc_ip6_ula3_prefix::/48 ge 48
 redistribute local deny
 redistribute deny
 
@@ -1954,7 +1615,7 @@ config 'tunOut' ip6
 
 config 'tunOut' ip4
         option 'tunOut' 'ip4'
-        option 'network' '10.10.0.0/16'
+        option 'network' '10.111.0.0/16'
 #        option 'ipMetric' '2000'
 
 
@@ -2009,7 +1670,6 @@ config 'plugin'
 #	option tablePrefTuns 6001
 
 config dev
-#	option dev $mlc_net12_name
 	option dev $mlc_net1_name
 
 #config dev
@@ -2051,35 +1711,6 @@ EOF
 
 
 
-cat <<EOF > /dev/null
-
-
-config dev
-#	option dev $mlc_net22_name
-	option dev $mlc_net2_name
-#	option announce 1
-
-#config unicastHna
-#        option unicastHna $mlc_ip6_ripe2_prefix:$vm_id::/64
-
-config 'redistribute' 'guifi'
-        option 'redistribute' 'guifi'
-        option 'connect' '1'
-        option 'network' '10.0.0.0/8'
-        option 'bandwidth' '10000'
-
-config 'tunOut' ip6default
-        option 'tunOut' 'ip6default'
-        option 'network' '::/0'
-        option 'ipMetric' '3000'
-        option 'maxPrefixLen' '0'
-
-
-config 'syncSms'
-        option 'syncSms' 'test'
-
-
-EOF
   
 
 
@@ -2102,11 +1733,6 @@ Interface "$mlc_net11_name"
     IPv6Multicast       FF0E::1
 }
 
-Interface "$mlc_net21_name"
-{
-    IPv6Src $mlc_net21_ula_addr
-    IPv6Multicast       FF0E::1
-}
 
 
 EOF

@@ -103,55 +103,45 @@ EOF
 fi
 
 
-if ! grep -q mlc /etc/hosts; then
-    cat <<EOF >> /etc/hosts
-10.0.0.2 mlc
-10.0.0.2 mlc0002
-10.0.10.0 m1000
-10.0.10.1 m1001
-10.0.10.2 m1002
-10.0.10.3 m1003
-10.0.10.4 m1004
-10.0.10.5 m1005
-10.0.10.6 m1006
-10.0.10.7 m1007
-10.0.10.8 m1008
-10.0.10.9 m1009
-
-10.0.10.10 m1010
-10.0.10.11 m1011
-10.0.10.12 m1012
-10.0.10.13 m1013
-10.0.10.14 m1014
-10.0.10.15 m1015
-10.0.10.16 m1016
-10.0.10.17 m1017
-10.0.10.18 m1018
-10.0.10.19 m1019
-
-10.0.10.20 m1020
-10.0.10.21 m1021
-10.0.10.22 m1022
-10.0.10.23 m1023
-10.0.10.24 m1024
-10.0.10.25 m1025
-10.0.10.26 m1026
-10.0.10.27 m1027
-10.0.10.28 m1028
-10.0.10.29 m1029
-
-10.0.10.49 m1049
-10.0.10.59 m1059
-10.0.10.69 m1069
-EOF
-fi
-
 
 if [ -f ./mlc-vars.sh ] ; then
     . ./mlc-vars.sh
 else
     echo "could not find mlc-vars.sh in $(pwd)"; exit 1
 fi
+
+if ! grep -q mlc /etc/hosts; then
+    cat <<EOF >> /etc/hosts
+10.${mlc_ip4_admin_prefix1}.0.1 mq
+10.${mlc_ip4_admin_prefix1}.0.3 mh
+10.${mlc_ip4_admin_prefix1}.0.2 mm
+10.${mlc_ip4_admin_prefix1}.0.2 mlc
+10.${mlc_ip4_admin_prefix1}.0.2 mlc0002
+10.${mlc_ip4_admin_prefix1}.10.0 m1000
+10.${mlc_ip4_admin_prefix1}.10.1 m1001
+10.${mlc_ip4_admin_prefix1}.10.2 m1002
+10.${mlc_ip4_admin_prefix1}.10.3 m1003
+10.${mlc_ip4_admin_prefix1}.10.4 m1004
+10.${mlc_ip4_admin_prefix1}.10.5 m1005
+10.${mlc_ip4_admin_prefix1}.10.6 m1006
+10.${mlc_ip4_admin_prefix1}.10.7 m1007
+10.${mlc_ip4_admin_prefix1}.10.8 m1008
+10.${mlc_ip4_admin_prefix1}.10.9 m1009
+
+10.${mlc_ip4_admin_prefix1}.10.10 m1010
+10.${mlc_ip4_admin_prefix1}.10.11 m1011
+10.${mlc_ip4_admin_prefix1}.10.12 m1012
+10.${mlc_ip4_admin_prefix1}.10.13 m1013
+10.${mlc_ip4_admin_prefix1}.10.14 m1014
+10.${mlc_ip4_admin_prefix1}.10.15 m1015
+10.${mlc_ip4_admin_prefix1}.10.16 m1016
+10.${mlc_ip4_admin_prefix1}.10.17 m1017
+10.${mlc_ip4_admin_prefix1}.10.18 m1018
+10.${mlc_ip4_admin_prefix1}.10.19 m1019
+
+EOF
+fi
+
 
 mother_name="${mlc_name_prefix}${mlc_mother_id}"
 
