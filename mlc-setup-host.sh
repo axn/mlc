@@ -167,7 +167,7 @@ if true; then
 	fi
     done
 
-    if false; then
+    if true; then
 	rm -rf --preserve-root $mlc_conf_dir/$mlc_name_prefix*
 
 	mkdir -p $mother_config
